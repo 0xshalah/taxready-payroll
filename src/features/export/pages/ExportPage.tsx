@@ -80,9 +80,14 @@ export function ExportPage() {
    * Run pre-export validation and display results
    */
   const runValidation = useCallback(() => {
+    setExportError(null);
+    setExportSuccess(null);
     const records = activeEmployees.map(toExportRecord);
     const result = validateExportRecords(records);
     setValidationErrors(result.errors);
+    if (result.valid) {
+      setExportSuccess(`Validasi berhasil! ${records.length} karyawan siap diekspor.`);
+    }
     return result.valid;
   }, [activeEmployees]);
 

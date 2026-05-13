@@ -93,8 +93,28 @@ export interface NIKValidationResult {
 }
 
 /**
- * Validasi NIK secara standalone
- * Memeriksa bahwa NIK terdiri dari tepat 16 digit angka
+ * Daftar kode provinsi yang valid di Indonesia (01-94)
+ * Berdasarkan data Kemendagri/BPS
+ */
+const VALID_PROVINCE_CODES = new Set([
+  '11','12','13','14','15','16','17','18','19',
+  '21',
+  '31','32','33','34','35','36',
+  '51','52','53',
+  '61','62','63','64','65',
+  '71','72','73','74','75','76',
+  '81','82',
+  '91','92','93','94',
+]);
+
+/**
+ * Validasi NIK secara standalone dengan pengecekan struktur
+ * Format NIK: [PP][KK][CC][DDMMYY][XXXX]
+ * - PP: kode provinsi (2 digit)
+ * - KK: kode kabupaten/kota (2 digit)
+ * - CC: kode kecamatan (2 digit)
+ * - DDMMYY: tanggal lahir (DD+40 untuk perempuan)
+ * - XXXX: nomor urut registrasi (4 digit)
  *
  * @param nik - String NIK yang akan divalidasi
  * @returns Objek dengan status valid dan pesan error jika tidak valid
@@ -118,6 +138,49 @@ export function validateNIK(nik: string): NIKValidationResult {
     return {
       valid: false,
       error: `NIK harus terdiri dari ${NIK_LENGTH} digit angka`,
+    };
+  }
+
+  // Validasi kode provinsi (2 digit pertama)
+  const provinceCode = trimmedNIK.substring(0, 2);
+  if (!VALID_PROVINCE_CODES.has(provinceCode)) {
+    return {
+      valid: false,
+      error: `Kode provinsi "${provinceCode}" tidak valid. Periksa 2 digit pertama NIK.`,
+    };
+  }
+
+  // Validasi tanggal lahir (digit ke-7 sampai 12: DDMMYY)
+  const dd = parseInt(trimmedNIK.substring(6, 8), 10);
+  const mm = parseInt(trimmedNIK.substring(8, 10), 10);
+  const yy = parseInt(trimmedNIK.substring(10, 12), 10);
+
+  // DD: 01-31 untuk laki-laki, 41-71 untuk perempuan
+  const isValidDD = (dd >= 1 && dd <= 31) || (dd >= 41 && dd <= 71);
+  if (!isValidDD) {
+    return {
+      valid: false,
+      error: `Tanggal lahir dalam NIK tidak valid (digit 7-8: "${trimmedNIK.substring(6, 8)}"). Harus 01-31 (L) atau 41-71 (P).`,
+    };
+  }
+
+  // MM: 01-12
+  if (mm < 1 || mm > 12) {
+    return {
+      valid: false,
+      error: `Bulan lahir dalam NIK tidak valid (digit 9-10: "${trimmedNIK.substring(8, 10)}"). Harus 01-12.`,
+    };
+  }
+
+  // YY: 00-99 (valid, karena bisa tahun 1900-an atau 2000-an)
+  // Tapi kita bisa cek apakah masuk akal (usia 15-70 tahun untuk karyawan)
+  const currentYear = new Date().getFullYear() % 100;
+  const birthYear = yy <= currentYear ? 2000 + yy : 1900 + yy;
+  const age = new Date().getFullYear() - birthYear;
+  if (age < 15 || age > 80) {
+    return {
+      valid: false,
+      error: `Tahun lahir dalam NIK menghasilkan usia ${age} tahun — tidak wajar untuk karyawan aktif.`,
     };
   }
 

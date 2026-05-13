@@ -161,7 +161,7 @@ export function EmployeeFormPage() {
           });
         }
       } else {
-        const result = await createMutation.mutateAsync(formData);
+        const result = await createMutation.mutateAsync({ ...formData, company_id: user.company_id });
 
         // Audit: log employee create
         await logEmployeeChange({

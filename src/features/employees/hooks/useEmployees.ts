@@ -144,7 +144,7 @@ async function fetchEmployees(userRole: UserRole): Promise<Employee[]> {
 /**
  * Buat karyawan baru dengan enkripsi NIK dan gaji_pokok
  */
-async function createEmployee(formData: EmployeeFormData): Promise<Employee> {
+async function createEmployee(formData: EmployeeFormData & { company_id: string }): Promise<Employee> {
   // Enkripsi NIK dan gaji_pokok sebelum simpan
   const [nikEncrypted, gajiPokokEncrypted] = await Promise.all([
     encryptValue(formData.nik),
@@ -154,6 +154,7 @@ async function createEmployee(formData: EmployeeFormData): Promise<Employee> {
   const { data, error } = await supabase
     .from('employees')
     .insert({
+      company_id: formData.company_id,
       nik_encrypted: nikEncrypted,
       nama_lengkap: formData.nama_lengkap,
       ptkp_status: formData.ptkp_status,
@@ -251,7 +252,7 @@ export function useEmployees(userRole: UserRole) {
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
 
-  return useMutation<Employee, Error, EmployeeFormData>({
+  return useMutation<Employee, Error, EmployeeFormData & { company_id: string }>({
     mutationFn: createEmployee,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EMPLOYEES_QUERY_KEY });

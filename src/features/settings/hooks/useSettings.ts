@@ -34,7 +34,6 @@ export function useTERRates(companyId: string) {
       const { data, error } = await supabase
         .from('ter_rates')
         .select('id, category, lower_bound, upper_bound, rate_percent')
-        .eq('company_id', companyId)
         .order('category')
         .order('lower_bound');
 
@@ -135,7 +134,7 @@ export function useBPJSConfig(companyId: string) {
            jp_wage_ceiling, kes_wage_ceiling,
            jkk_discount_start, jkk_discount_end`
         )
-        .eq('company_id', companyId)
+        .limit(1)
         .single();
 
       if (error) {
