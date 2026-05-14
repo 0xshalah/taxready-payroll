@@ -61,12 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 10_000);
 
     // Fast init: getSession() baca dari localStorage — biasanya < 50ms
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted || manualAuthInProgress.current) return;
 
       if (session?.user) {
         // LANGSUNG set user dari session data (tanpa tunggu DB query)
-        // Ini yang mencegah redirect ke login saat refresh
         const immediateUser: User = {
           id: session.user.id,
           company_id: (session.user.user_metadata?.company_id as string) ?? '',
@@ -76,19 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           created_at: session.user.created_at ?? new Date().toISOString(),
         };
 
-        // Set loading: false SEGERA dengan data dari session
         if (mounted && !manualAuthInProgress.current) {
           setState({ user: immediateUser, loading: false, error: null });
         }
 
-        // Kemudian fetch profil lengkap dari DB di background (non-blocking)
-        fetchUserProfile(session.user.id).then(profile => {
+        // Fetch profil lengkap di background (setTimeout untuk hindari deadlock)
+        setTimeout(async () => {
+          if (!mounted || manualAuthInProgress.current) return;
+          const profile = await fetchUserProfile(session.user.id);
           if (mounted && !manualAuthInProgress.current && profile) {
             setState({ user: profile, loading: false, error: null });
           }
-        }).catch(() => {
-          // Profile fetch gagal — tetap pakai immediateUser dari session
-        });
+        }, 0);
       } else {
         setState({ user: null, loading: false, error: null });
       }
@@ -97,31 +95,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen for subsequent changes only
+    // PENTING: Jangan panggil Supabase API langsung di dalam callback ini!
+    // Ada bug deadlock di supabase-js — semua async Supabase call di dalam
+    // onAuthStateChange akan menyebabkan call berikutnya hang.
+    // Solusi: gunakan setTimeout(..., 0) untuk keluar dari callback context.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted || manualAuthInProgress.current) return;
         if (event === 'INITIAL_SESSION') return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          if (mounted && !manualAuthInProgress.current) {
-            if (profile) {
+          // Set user langsung dari session data (tanpa DB call)
+          const sessionUser: User = {
+            id: session.user.id,
+            company_id: (session.user.user_metadata?.company_id as string) ?? '',
+            email: session.user.email ?? '',
+            nama: (session.user.user_metadata?.nama as string) ?? session.user.email?.split('@')[0] ?? 'User',
+            role: (session.user.user_metadata?.role as User['role']) ?? 'regular_staff',
+            created_at: session.user.created_at ?? new Date().toISOString(),
+          };
+          setState({ user: sessionUser, loading: false, error: null });
+
+          // Fetch profil lengkap di luar callback (setTimeout untuk hindari deadlock)
+          setTimeout(async () => {
+            if (!mounted || manualAuthInProgress.current) return;
+            const profile = await fetchUserProfile(session.user.id);
+            if (mounted && !manualAuthInProgress.current && profile) {
               setState({ user: profile, loading: false, error: null });
-            } else {
-              const fallbackUser: User = {
-                id: session.user.id,
-                company_id: (session.user.user_metadata?.company_id as string) ?? '',
-                email: session.user.email ?? '',
-                nama: (session.user.user_metadata?.nama as string) ?? session.user.email?.split('@')[0] ?? 'User',
-                role: (session.user.user_metadata?.role as User['role']) ?? 'regular_staff',
-                created_at: session.user.created_at ?? new Date().toISOString(),
-              };
-              setState({ user: fallbackUser, loading: false, error: null });
             }
-          }
+          }, 0);
         } else if (event === 'SIGNED_OUT') {
-          // Hanya clear user jika logout memang disengaja
-          // (SIGNED_OUT bisa fire spuriously saat token refresh / page load)
           if (logoutIntended.current && mounted) {
             setState({ user: null, loading: false, error: null });
             logoutIntended.current = false;
