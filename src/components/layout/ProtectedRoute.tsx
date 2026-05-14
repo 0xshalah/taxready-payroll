@@ -36,11 +36,13 @@ export function ProtectedRoute({ children, resource, action = 'read' }: Protecte
   const hasLoggedRef = useRef(false);
 
   const isAuthenticated = !!user;
+  // Jika company_id kosong, profil belum lengkap (masih fallback dari session)
+  const isProfileLoading = isAuthenticated && !user?.company_id;
   const hasPermission = user ? checkPermission(user.role, resource, action) : false;
 
-  // Catat unauthorized access ke audit_logs (sekali saja)
+  // Catat unauthorized access ke audit_logs (sekali saja, hanya setelah profil lengkap)
   useEffect(() => {
-    if (!loading && isAuthenticated && !hasPermission && user && !hasLoggedRef.current) {
+    if (!loading && !isProfileLoading && isAuthenticated && !hasPermission && user && !hasLoggedRef.current) {
       hasLoggedRef.current = true;
       logUnauthorizedAccess({
         userId: user.id,
@@ -50,10 +52,10 @@ export function ProtectedRoute({ children, resource, action = 'read' }: Protecte
         attemptedAction: action,
       });
     }
-  }, [loading, isAuthenticated, hasPermission, user, resource, action]);
+  }, [loading, isProfileLoading, isAuthenticated, hasPermission, user, resource, action]);
 
   // Loading state
-  if (loading) {
+  if (loading || isProfileLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
