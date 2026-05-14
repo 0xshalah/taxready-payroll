@@ -122,19 +122,25 @@
 
 @layer components {
   /* ─── View Transitions: Circular Reveal ─── */
-  /* Disable default crossfade, we use custom clip-path animation */
+  /* Nonaktifkan cross-fade default browser */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  /* Eclipse (Light→Dark): new view expands as dark circle */
+  /* Eclipse (Light→Dark): old view di atas, di-clip menyusut */
+  /* Sunrise (Dark→Light): new view di atas, di-clip melebar */
   ::view-transition-old(root) {
     z-index: 1;
   }
   ::view-transition-new(root) {
     z-index: 9999;
+  }
+
+  /* Hindari background-color transition yang mengganggu */
+  html {
+    transition: background-color 0s;
   }
 
   /* Respect reduced motion preference */

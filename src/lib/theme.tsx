@@ -1,11 +1,11 @@
 /**
- * Theme Provider & Toggle — Dark/Light mode with View Transitions API
+ * Theme Provider — Dark/Light mode with View Transitions API Circular Reveal
  * 
- * Transisi menggunakan:
- * - "Eclipse" Effect: Light → Dark (lingkaran gelap melebar dari titik klik)
- * - "Sunrise" Effect: Dark → Light (lingkaran terang melebar dari titik klik)
+ * - "Eclipse" Effect: Light → Dark — old view shrinks (circle menyusut)
+ * - "Sunrise" Effect: Dark → Light — new view expands (circle melebar)
  * 
- * Fallback: langsung switch tanpa animasi jika browser tidak support View Transitions.
+ * Menggunakan document.startViewTransition() + Web Animations API (WAAPI)
+ * untuk animasi clip-path yang berpusat pada koordinat klik.
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
@@ -43,60 +43,55 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   const toggleTheme = useCallback((event?: React.MouseEvent) => {
-    const newTheme = themeRef.current === 'dark' ? 'light' : 'dark';
+    const isDark = themeRef.current !== 'dark'; // Target: apakah mau jadi dark?
+    const newTheme: Theme = isDark ? 'dark' : 'light';
 
-    // Get click coordinates for circular reveal origin
-    const x = event?.clientX ?? window.innerWidth / 2;
-    const y = event?.clientY ?? window.innerHeight / 2;
-
-    // Calculate the maximum radius needed to cover the entire viewport
-    const maxRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    );
-
-    // Check if View Transitions API is supported
+    // Fallback untuk browser yang belum mendukung View Transitions API
     if (!document.startViewTransition) {
-      // Fallback: instant switch
       setThemeState(newTheme);
       return;
     }
 
-    // Set CSS custom properties for the animation origin
-    document.documentElement.style.setProperty('--transition-x', `${x}px`);
-    document.documentElement.style.setProperty('--transition-y', `${y}px`);
-    document.documentElement.style.setProperty('--transition-radius', `${maxRadius}px`);
+    // Ambil koordinat klik (atau tengah layar jika tidak ada event)
+    const x = event?.clientX ?? window.innerWidth / 2;
+    const y = event?.clientY ?? window.innerHeight / 2;
 
+    // Hitung radius maksimal (jarak dari titik klik ke sudut terjauh layar)
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    // Mulai transisi
     const transition = document.startViewTransition(() => {
+      // Terapkan perubahan state DOM
       setThemeState(newTheme);
     });
 
+    // Tunggu hingga pseudo-elements transisi siap
     transition.ready.then(() => {
-      // Animate the new view with circular clip-path
-      const isEclipse = newTheme === 'dark'; // Light → Dark = Eclipse
+      // Definisikan clip-path keyframes
+      const clipPath = [
+        `circle(0px at ${x}px ${y}px)`,
+        `circle(${endRadius}px at ${x}px ${y}px)`,
+      ];
 
+      // Eclipse (→ dark): Layar LAMA di-clip menyusut (old view shrinks away)
+      // Sunrise (→ light): Layar BARU di-clip melebar (new view expands in)
       document.documentElement.animate(
         {
-          clipPath: isEclipse
-            ? [
-                `circle(0px at ${x}px ${y}px)`,
-                `circle(${maxRadius}px at ${x}px ${y}px)`,
-              ]
-            : [
-                `circle(0px at ${x}px ${y}px)`,
-                `circle(${maxRadius}px at ${x}px ${y}px)`,
-              ],
+          clipPath: isDark ? [...clipPath].reverse() : clipPath,
         },
         {
           duration: 500,
-          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-          pseudoElement: isEclipse
-            ? '::view-transition-new(root)'
+          easing: 'ease-in-out',
+          pseudoElement: isDark
+            ? '::view-transition-old(root)'
             : '::view-transition-new(root)',
         }
       );
     }).catch(() => {
-      // Transition was skipped (e.g., prefers-reduced-motion)
+      // Transition was skipped (prefers-reduced-motion or interrupted)
     });
   }, []);
 
