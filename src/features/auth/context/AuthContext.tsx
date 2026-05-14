@@ -51,35 +51,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Short timeout: if auth doesn't resolve in 2s, just show the app (redirect to login)
+    // Timeout fallback: hanya jika getSession() sendiri hang (sangat jarang)
+    // Diperpanjang ke 10 detik — getSession() baca localStorage, harusnya instan
     const timeout = setTimeout(() => {
       if (mounted) {
         setState(prev => prev.loading ? { user: null, loading: false, error: null } : prev);
       }
-    }, 2_000);
+    }, 10_000);
 
-    // Fast init: getSession is usually instant (reads from localStorage)
+    // Fast init: getSession() baca dari localStorage — biasanya < 50ms
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted || manualAuthInProgress.current) return;
 
       if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id);
+        // LANGSUNG set user dari session data (tanpa tunggu DB query)
+        // Ini yang mencegah redirect ke login saat refresh
+        const immediateUser: User = {
+          id: session.user.id,
+          company_id: (session.user.user_metadata?.company_id as string) ?? '',
+          email: session.user.email ?? '',
+          nama: (session.user.user_metadata?.nama as string) ?? session.user.email?.split('@')[0] ?? 'User',
+          role: (session.user.user_metadata?.role as User['role']) ?? 'regular_staff',
+          created_at: session.user.created_at ?? new Date().toISOString(),
+        };
+
+        // Set loading: false SEGERA dengan data dari session
         if (mounted && !manualAuthInProgress.current) {
-          if (profile) {
-            setState({ user: profile, loading: false, error: null });
-          } else {
-            // Profile fetch failed but session exists — use fallback from auth
-            const fallbackUser: User = {
-              id: session.user.id,
-              company_id: (session.user.user_metadata?.company_id as string) ?? '',
-              email: session.user.email ?? '',
-              nama: (session.user.user_metadata?.nama as string) ?? session.user.email?.split('@')[0] ?? 'User',
-              role: (session.user.user_metadata?.role as User['role']) ?? 'regular_staff',
-              created_at: session.user.created_at ?? new Date().toISOString(),
-            };
-            setState({ user: fallbackUser, loading: false, error: null });
-          }
+          setState({ user: immediateUser, loading: false, error: null });
         }
+
+        // Kemudian fetch profil lengkap dari DB di background (non-blocking)
+        fetchUserProfile(session.user.id).then(profile => {
+          if (mounted && !manualAuthInProgress.current && profile) {
+            setState({ user: profile, loading: false, error: null });
+          }
+        }).catch(() => {
+          // Profile fetch gagal — tetap pakai immediateUser dari session
+        });
       } else {
         setState({ user: null, loading: false, error: null });
       }
@@ -151,6 +159,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await fetchUserProfile(authData.user.id);
 
       if (profile) {
+        // Update user_metadata di Supabase Auth agar session refresh punya data lengkap
+        void supabase.auth.updateUser({
+          data: {
+            role: profile.role,
+            company_id: profile.company_id,
+            nama: profile.nama,
+          },
+        });
         setState({ user: profile, loading: false, error: null });
         return profile;
       }
