@@ -56,11 +56,13 @@ async function encryptValue(plainText: string): Promise<string> {
 }
 
 /**
- * Dekripsi sebuah nilai menggunakan Supabase RPC decrypt_value(text).
+ * Dekripsi sebuah nilai menggunakan Supabase RPC decrypt_employee_field(UUID, TEXT).
  * SECURITY: Key diambil dari Supabase Vault di server — TIDAK dikirim dari client.
+ * Migration 011: decrypt_value(text) dicabut aksesnya dari authenticated.
  */
-async function decryptValue(encryptedData: string): Promise<string> {
-  const { data, error } = await supabase.rpc('decrypt_value', {
+async function decryptEmployeeField(employeeId: string, encryptedData: string): Promise<string> {
+  const { data, error } = await supabase.rpc('decrypt_employee_field', {
+    employee_id_param: employeeId,
     encrypted_data: encryptedData,
   });
 
@@ -82,10 +84,10 @@ async function decryptEmployeeRow(
   userRole: UserRole
 ): Promise<Employee> {
   // Dekripsi NIK
-  const nikPlain = await decryptValue(row.nik_encrypted);
+  const nikPlain = await decryptEmployeeField(row.id, row.nik_encrypted);
 
   // Dekripsi gaji_pokok
-  const gajiPokokPlain = await decryptValue(row.gaji_pokok_encrypted);
+  const gajiPokokPlain = await decryptEmployeeField(row.id, row.gaji_pokok_encrypted);
 
   // Masking NIK untuk Regular Staff (Persyaratan 8.7)
   const nikDisplay = userRole === 'regular_staff' ? maskNIK(nikPlain) : nikPlain;
@@ -110,6 +112,11 @@ async function decryptEmployeeRow(
  * Fetch dan dekripsi seluruh karyawan aktif
  */
 async function fetchEmployees(userRole: UserRole): Promise<Employee[]> {
+  // Regular staff tidak boleh mendekripsi data karyawan manapun
+  if (userRole === 'regular_staff') {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('employees')
     .select('*')
@@ -203,17 +210,14 @@ async function updateEmployee(
 }
 
 /**
- * Hapus karyawan — SOFT DELETE: set is_active = false + deleted_at = now()
+ * Hapus karyawan — SOFT DELETE via RPC soft_delete_employee(UUID)
  * Data tidak dihapus permanen untuk menjaga integritas audit trail.
+ * Hanya Owner yang dapat menghapus (validasi di server-side).
  */
 async function deleteEmployee(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('employees')
-    .update({
-      is_active: false,
-      deleted_at: new Date().toISOString(),
-    })
-    .eq('id', id);
+  const { error } = await supabase.rpc('soft_delete_employee', {
+    employee_id: id,
+  });
 
   if (error) {
     throw new Error(`Gagal menonaktifkan data karyawan: ${error.message}`);
