@@ -69,27 +69,6 @@ export function ProtectedRoute({ children, resource, action = 'read' }: Protecte
     return <Navigate to="/login" replace />;
   }
 
-  // User login tapi company_id kosong (fallback user tanpa profil lengkap)
-  if (user && !user.company_id) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-xl font-medium text-ink mb-2">Profil Belum Lengkap</h1>
-          <p className="text-sm text-ink-mute mb-4">
-            Tidak dapat memuat data perusahaan Anda. Silakan logout dan login kembali.
-            Jika masalah berlanjut, hubungi administrator.
-          </p>
-          <button
-            onClick={() => window.location.href = '/login'}
-            className="px-4 py-2 bg-primary text-ink text-sm font-medium rounded-sm hover:bg-primary-deep"
-          >
-            Kembali ke Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Tidak punya izin → tampilkan pesan akses ditolak
   if (!hasPermission) {
     return (

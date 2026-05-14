@@ -45,7 +45,6 @@ export function LoginPage() {
         } else {
           setError(authError.message)
         }
-        setIsSubmitting(false)
         return
       }
 
@@ -53,6 +52,7 @@ export function LoginPage() {
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan')
+    } finally {
       setIsSubmitting(false)
     }
   }

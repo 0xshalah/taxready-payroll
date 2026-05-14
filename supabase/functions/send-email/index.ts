@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Deno Edge Function — dijalankan di Supabase Edge Runtime (bukan Node.js)
+// Error TypeScript di VS Code adalah normal karena ini Deno code, bukan Node.js
 /**
  * Supabase Edge Function: send-email
  * Mengirim email notifikasi menggunakan Resend API.
