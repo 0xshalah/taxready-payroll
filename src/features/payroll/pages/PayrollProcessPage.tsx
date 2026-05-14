@@ -47,7 +47,7 @@ const MONTH_NAMES = [
 /**
  * Konversi data Employee ke EmployeePayrollData untuk batch processor
  */
-function toPayrollData(employee: Employee): EmployeePayrollData {
+function toPayrollData(employee: Employee, lemburMap: Record<string, number>): EmployeePayrollData {
   return {
     employee_id: employee.id,
     nama: employee.nama_lengkap,
@@ -55,7 +55,7 @@ function toPayrollData(employee: Employee): EmployeePayrollData {
     ptkp_status: employee.ptkp_status,
     gaji_pokok: employee.gaji_pokok,
     tunjangan_tetap: employee.tunjangan_tetap,
-    uang_lembur: 0,
+    uang_lembur: lemburMap[employee.id] ?? 0,
   };
 }
 
@@ -151,6 +151,8 @@ export function PayrollProcessPage() {
 
   // Duplicate period dialog
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  // Uang lembur per karyawan
+  const [lemburMap, setLemburMap] = useState<Record<string, number>>({});
 
   const isDataLoading = loadingEmployees || loadingTER || loadingBPJS;
   const activeEmployees = employees?.filter((e) => e.is_active) ?? [];
@@ -173,7 +175,7 @@ export function PayrollProcessPage() {
     setProcessedCount(0);
 
     try {
-      const payrollData: EmployeePayrollData[] = activeEmployees.map(toPayrollData);
+      const payrollData: EmployeePayrollData[] = activeEmployees.map(e => toPayrollData(e, lemburMap));
       // Build ptkp map for saving to payroll_results
       const ptkpMap: Record<string, string> = {};
       activeEmployees.forEach(e => { ptkpMap[e.id] = e.ptkp_status; });
@@ -339,6 +341,37 @@ export function PayrollProcessPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Uang Lembur per Karyawan */}
+      {!isDataLoading && activeEmployees.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Uang Lembur (Opsional)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-ink-mute mb-3">Isi uang lembur untuk karyawan yang bekerja lembur bulan ini. Kosongkan jika tidak ada lembur.</p>
+            <div className="space-y-2">
+              {activeEmployees.map((emp) => (
+                <div key={emp.id} className="flex items-center gap-3">
+                  <span className="text-sm text-ink w-48 truncate">{emp.nama_lengkap}</span>
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <span className="text-xs text-ink-mute">Rp</span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={lemburMap[emp.id] ?? ''}
+                      onChange={e => setLemburMap(prev => ({ ...prev, [emp.id]: Number(e.target.value) || 0 }))}
+                      disabled={isProcessing}
+                      className="flex h-8 w-full max-w-[160px] rounded-xs border border-hairline bg-canvas px-3 py-1 text-sm text-ink placeholder:text-ink-faint focus-visible:outline-none focus-visible:border-primary disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Success Banner */}
       <AnimatePresence>
