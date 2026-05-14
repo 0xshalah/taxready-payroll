@@ -62,9 +62,9 @@ function HeroSection() {
         >
           <div className="relative mx-auto max-w-4xl">
             {/* Browser frame */}
-            <div className="rounded-lg border border-hairline bg-canvas shadow-[0_8px_24px_rgba(0,0,0,0.08)] overflow-hidden">
+            <div className="rounded-lg border border-hairline bg-canvas shadow-glass overflow-hidden">
               {/* Browser top bar */}
-              <div className="flex items-center gap-2 border-b border-hairline bg-canvas-soft px-4 py-3">
+              <div className="flex items-center gap-2 border-b border-hairline bg-canvas-elevated/50 px-4 py-3">
                 <div className="flex gap-1.5">
                   <div className="h-3 w-3 rounded-full bg-[#ef4444]/60" />
                   <div className="h-3 w-3 rounded-full bg-[#f59e0b]/60" />
@@ -77,7 +77,7 @@ function HeroSection() {
                 </div>
               </div>
               {/* Dashboard mockup content */}
-              <div className="bg-canvas p-6">
+              <div className="bg-canvas-card p-6">
                 {/* Top summary cards */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
                   {[
@@ -94,7 +94,7 @@ function HeroSection() {
                 </div>
                 {/* Table preview */}
                 <div className="rounded-md border border-hairline overflow-hidden">
-                  <div className="grid grid-cols-5 gap-0 bg-canvas-soft px-3 py-2 text-[10px] font-medium text-ink-mute uppercase">
+                  <div className="grid grid-cols-5 gap-0 bg-canvas-elevated/50 px-3 py-2 text-[10px] font-medium text-ink-mute uppercase">
                     <span>Nama</span><span>Bruto</span><span>PPh 21</span><span>BPJS</span><span>Gaji Bersih</span>
                   </div>
                   {[
@@ -150,7 +150,7 @@ function BentoFeatureCard({
       whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.06)" }}
       className={`rounded-lg border border-hairline bg-canvas p-6 transition-colors ${className}`}
     >
-      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-canvas-soft text-ink">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-canvas-elevated/50 text-ink">
         {icon}
       </div>
       <h3 className="mb-2 text-base font-medium text-ink">{title}</h3>
@@ -240,7 +240,7 @@ function HowItWorksSection() {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="bg-canvas-soft px-6 py-24">
+    <section className="bg-canvas-elevated/50 px-6 py-24">
       <div ref={ref} className="mx-auto max-w-3xl">
         <SectionHeading
           title="Cara Kerja"
@@ -363,7 +363,7 @@ function ComparisonSection() {
         >
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-hairline bg-canvas-soft">
+              <tr className="border-b border-hairline bg-canvas-elevated/50">
                 <th className="px-4 py-3 text-left font-medium text-ink">Fitur</th>
                 <th className="px-4 py-3 text-center font-medium text-primary">Tax-Ready Payroll</th>
                 <th className="px-4 py-3 text-center font-medium text-ink-mute">Excel Manual</th>
@@ -469,7 +469,7 @@ function FAQSection() {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="bg-canvas-soft px-6 py-24">
+    <section className="bg-canvas-elevated/50 px-6 py-24">
       <div ref={ref} className="mx-auto max-w-2xl">
         <SectionHeading
           title="Pertanyaan Umum"
@@ -554,7 +554,7 @@ function SectionHeading({
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas bg-mesh">
       <div className="mx-auto max-w-[1280px]">
         <HeroSection />
         <FeaturesSection />
@@ -567,3 +567,4 @@ export function LandingPage() {
     </div>
   );
 }
+
