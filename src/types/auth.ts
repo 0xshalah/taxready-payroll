@@ -35,6 +35,7 @@ export interface User {
   nama: string;
   role: UserRole;
   created_at: string;
+  mfa_enabled?: boolean; // MFA status (optional, diisi setelah check)
 }
 
 /** State autentikasi */

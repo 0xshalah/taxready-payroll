@@ -168,16 +168,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await fetchUserProfile(authData.user.id);
 
       if (profile) {
+        // SECURITY FIX (2026-05-15): Check MFA status untuk Owner dan HR Staff
+        let mfaEnabled = false;
+        if (profile.role === 'owner' || profile.role === 'hr_staff') {
+          try {
+            const { data: mfaStatus } = await supabase.rpc('check_user_mfa_status', {
+              p_user_id: profile.id,
+            });
+            mfaEnabled = mfaStatus === true;
+          } catch {
+            // Jika check gagal, anggap MFA belum aktif
+            mfaEnabled = false;
+          }
+        }
+
+        const profileWithMFA = { ...profile, mfa_enabled: mfaEnabled };
+
         // Update user_metadata di Supabase Auth agar session refresh punya data lengkap
         void supabase.auth.updateUser({
           data: {
             role: profile.role,
             company_id: profile.company_id,
             nama: profile.nama,
+            mfa_enabled: mfaEnabled,
           },
         });
-        setState({ user: profile, loading: false, error: null });
-        return profile;
+        setState({ user: profileWithMFA, loading: false, error: null });
+        return profileWithMFA;
       }
 
       // If profile fetch fails (RLS, table not ready, etc.),
@@ -190,6 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nama: (authData.user.user_metadata?.nama as string) ?? credentials.email.split('@')[0] ?? 'User',
         role: (authData.user.user_metadata?.role as User['role']) ?? 'regular_staff',
         created_at: authData.user.created_at ?? new Date().toISOString(),
+        mfa_enabled: false,
       };
 
       setState({ user: fallbackUser, loading: false, error: null });

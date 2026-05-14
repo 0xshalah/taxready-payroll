@@ -4,8 +4,8 @@
  *
  * Matriks RBAC:
  * - Owner: full access (read, write, delete) pada semua resource
- * - HR Staff: read+write pada employees, payroll, export, profile, my_payslips.
- *            TANPA delete employees. TANPA akses settings, audit, user_management.
+ * - HR Staff: read+write pada employees, payroll, profile, my_payslips.
+ *            TANPA akses export, settings, audit, user_management.
  * - Regular Staff: read only pada profile dan my_payslips. TANPA akses lainnya.
  */
 
@@ -30,7 +30,6 @@ const PERMISSION_MATRIX: Record<UserRole, Partial<Record<Resource, Action[]>>> =
   hr_staff: {
     employees: ['read', 'write'],
     payroll: ['read', 'write'],
-    export: ['read', 'write'],
     profile: ['read', 'write'],
     my_payslips: ['read', 'write'],
     tarif_changelog: ['read'],

@@ -1,11 +1,3 @@
-/**
- * ExportPage — Halaman ekspor laporan Coretax
- * Format: CSV, XML, atau PDF BPA1
- *
- * FIXED: Mengambil data PPh21 dari payroll_results (bukan placeholder 0)
- * FIXED: Mengambil nama perusahaan & NPWP dari companies table
- */
-
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,20 +8,37 @@ import {
   Select,
   SelectOption,
   Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  Input,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
   generateCoretaxCSV,
-  validateExportRecords,
   ExportValidationError,
 } from '@/features/export/generators/csvGenerator';
 import { generateCoretaxXML } from '@/features/export/generators/xmlGenerator';
 import { downloadBPA1 } from '@/features/export/generators/pdfBPA1Generator';
 import { supabase } from '@/lib/supabase';
-import { logExportDocument } from '@/lib/auditLogger';
+import { logExportDocument, logUnauthorizedAccess } from '@/lib/auditLogger';
 import type { ExportRecord, ValidationError } from '@/features/export/generators/csvGenerator';
 
 type ExportFormat = 'csv' | 'xml' | 'pdf_bpa1';
+
+interface SecureExportRecord extends ExportRecord {
+  ptkp_status: string;
+}
+
+interface SecureExportResponse {
+  records: SecureExportRecord[];
+  company_name: string;
+  company_npwp: string;
+  period: string;
+}
 
 const MONTH_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -57,53 +66,6 @@ async function fetchCompanyInfo(companyId: string) {
   return data;
 }
 
-/** Fetch payroll results for a specific period from database */
-async function fetchPayrollResults(companyId: string, period: string): Promise<ExportRecord[]> {
-  const { data, error } = await supabase
-    .from('payroll_results')
-    .select('nama, gross_income, pph21, employee_id, ptkp_status')
-    .eq('company_id', companyId)
-    .eq('period', period)
-    .eq('status', 'success');
-
-  if (error || !data || data.length === 0) {
-    return [];
-  }
-
-  // We need NIK from employees table — fetch encrypted NIK via RPC
-  // For export, we need the decrypted NIK
-  const employeeIds = data.map(r => r.employee_id);
-  const { data: employees } = await supabase
-    .from('employees')
-    .select('id, nik_encrypted')
-    .in('id', employeeIds);
-
-  // Decrypt NIKs — key diambil dari Vault di server, tidak dari client
-  const nikMap: Record<string, string> = {};
-  if (employees) {
-    for (const emp of employees) {
-      try {
-        const { data: decrypted } = await supabase.rpc('decrypt_value', {
-          encrypted_data: emp.nik_encrypted,
-        });
-        if (decrypted) {
-          nikMap[emp.id] = decrypted;
-        }
-      } catch {
-        // Skip if decrypt fails
-      }
-    }
-  }
-
-  return data.map(r => ({
-    nik: nikMap[r.employee_id] ?? '',
-    nama_lengkap: r.nama,
-    gross_income: Number(r.gross_income),
-    pph21: Number(r.pph21),
-    ptkp_status: r.ptkp_status ?? 'TK/0',
-  }));
-}
-
 export function ExportPage() {
   const { user } = useAuth();
   const companyId = user?.company_id ?? '';
@@ -117,6 +79,12 @@ export function ExportPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
+  // Step-up password dialog state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [stepUpPassword, setStepUpPassword] = useState('');
+  const [stepUpError, setStepUpError] = useState<string | null>(null);
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+
   // Fetch company info from database
   const { data: companyInfo } = useQuery({
     queryKey: ['company-info', companyId],
@@ -125,72 +93,152 @@ export function ExportPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const companyName = companyInfo?.nama_perusahaan ?? 'Perusahaan';
   const companyNPWP = companyInfo?.npwp_badan ?? '';
 
-  const periodStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
-
-  // Fetch payroll results for selected period
-  const { data: payrollRecords, isLoading: loadingRecords } = useQuery({
-    queryKey: ['export-records', companyId, periodStr],
-    queryFn: () => fetchPayrollResults(companyId, periodStr),
-    enabled: !!companyId,
-  });
-
-  const records = payrollRecords ?? [];
-  const hasPayrollData = records.length > 0;
-
-  const runValidation = useCallback(() => {
-    setExportError(null);
-    setExportSuccess(null);
-    if (!hasPayrollData) {
-      setExportError(`Belum ada data penggajian untuk periode ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}. Proses penggajian terlebih dahulu.`);
-      return false;
-    }
-    const result = validateExportRecords(records);
-    setValidationErrors(result.errors);
-    if (result.valid) {
-      setExportSuccess(`Validasi berhasil! ${records.length} karyawan siap diekspor.`);
-    }
-    return result.valid;
-  }, [records, hasPayrollData, selectedMonth, selectedYear]);
-
-  const handleExportFile = useCallback(async () => {
-    if (!hasPayrollData) {
-      setExportError(`Belum ada data penggajian untuk periode ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}. Proses penggajian terlebih dahulu.`);
+  /**
+   * Step-up: verify password, get fresh session token, call Edge Function.
+   * Restores original session afterward.
+   */
+  const handleStepUpAndExport = useCallback(async () => {
+    if (!user || !companyNPWP) {
+      setExportError('Data pengguna atau perusahaan belum lengkap.');
       return;
     }
 
-    const confirmed = window.confirm(
-      'File ekspor mengandung data pribadi (NIK) karyawan.\n\n' +
-      'Pastikan Anda menyimpan file ini di lokasi yang aman dan tidak membagikannya ke pihak yang tidak berwenang.\n\n' +
-      'Lanjutkan download?'
-    );
-    if (!confirmed) return;
-
-    setExportError(null);
-    setExportSuccess(null);
-    setValidationErrors([]);
-
-    const period = { month: selectedMonth, year: selectedYear };
+    setStepUpError(null);
+    setIsVerifyingPassword(true);
 
     try {
-      setIsExporting(true);
+      // Save current session
+      const { data: { session: oldSession } } = await supabase.auth.getSession();
 
+      // Re-authenticate with password (step-up verification)
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: stepUpPassword,
+      });
+
+      if (signInError || !signInData.session) {
+        setStepUpError('Password salah. Silakan coba lagi.');
+        setIsVerifyingPassword(false);
+        return;
+      }
+
+      // Close password dialog
+      setShowPasswordDialog(false);
+      setStepUpPassword('');
+      setStepUpError(null);
+
+      const freshToken = signInData.session.access_token;
+      const period = { month: selectedMonth, year: selectedYear };
+      const periodStrLocal = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+
+      // Call Edge Function with fresh token
+      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('secure-export', {
+        headers: { Authorization: `Bearer ${freshToken}` },
+        body: {
+          company_id: companyId,
+          period: periodStrLocal,
+          format,
+        },
+      });
+
+      // Restore old session
+      if (oldSession) {
+        await supabase.auth.setSession({
+          access_token: oldSession.access_token,
+          refresh_token: oldSession.refresh_token,
+        });
+      }
+
+      if (edgeError) {
+        const errMsg = edgeError.message || 'Gagal memproses ekspor.';
+        if (errMsg.includes('Akses ditolak') || errMsg.includes('403')) {
+          // Log unauthorized access attempt
+          logUnauthorizedAccess({
+            userId: user.id,
+            companyId,
+            userRole: user.role,
+            attemptedResource: 'secure_export',
+            attemptedAction: 'mass_export',
+          }).catch(() => {});
+          setExportError('Akses ditolak. Hanya Owner yang dapat melakukan ekspor data massal.');
+        } else {
+          setExportError(errMsg);
+        }
+        setIsExporting(false);
+        return;
+      }
+
+      const exportData = edgeData as SecureExportResponse;
+
+      if (!exportData.records || exportData.records.length === 0) {
+        setExportError(`Belum ada data penggajian untuk periode ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}. Proses penggajian terlebih dahulu.`);
+        setIsExporting(false);
+        return;
+      }
+
+      setIsExporting(true);
+      setValidationErrors([]);
+      setExportError(null);
+      setExportSuccess(null);
+
+      // Process export based on format
       if (format === 'csv') {
-        const result = generateCoretaxCSV(companyName, period, records);
+        const result = generateCoretaxCSV(exportData.company_name, period, exportData.records);
         const blob = new Blob([result.content], { type: 'text/csv;charset=utf-8' });
         triggerDownload(blob, result.filename);
         setExportSuccess(`File ${result.filename} berhasil diunduh.`);
-        // Audit log export (HIGH-NEW-04)
-        if (user) logExportDocument({ userId: user.id, companyId, userRole: user.role, exportType: 'csv', periodMonth: selectedMonth, periodYear: selectedYear, fileName: result.filename }).catch(() => {});
+        logExportDocument({
+          userId: user.id, companyId, userRole: user.role,
+          exportType: 'csv', periodMonth: selectedMonth, periodYear: selectedYear,
+          fileName: result.filename,
+        }).catch(() => {});
       } else if (format === 'xml') {
-        const result = generateCoretaxXML(companyName, period, records);
+        const result = generateCoretaxXML(exportData.company_name, period, exportData.records);
         const blob = new Blob([result.content], { type: 'application/xml;charset=utf-8' });
         triggerDownload(blob, result.filename);
         setExportSuccess(`File ${result.filename} berhasil diunduh.`);
-        // Audit log export (HIGH-NEW-04)
-        if (user) logExportDocument({ userId: user.id, companyId, userRole: user.role, exportType: 'xml', periodMonth: selectedMonth, periodYear: selectedYear, fileName: result.filename }).catch(() => {});
+        logExportDocument({
+          userId: user.id, companyId, userRole: user.role,
+          exportType: 'xml', periodMonth: selectedMonth, periodYear: selectedYear,
+          fileName: result.filename,
+        }).catch(() => {});
+      } else if (format === 'pdf_bpa1') {
+        let successCount = 0;
+        const errors: string[] = [];
+
+        for (const record of exportData.records) {
+          try {
+            const result = await downloadBPA1(
+              {
+                nama: record.nama_lengkap,
+                nik: record.nik,
+                ptkp_status: record.ptkp_status ?? 'TK/0',
+                gross_income: record.gross_income,
+                pph21: record.pph21,
+              },
+              {
+                nama_perusahaan: exportData.company_name,
+                npwp_badan: exportData.company_npwp,
+              },
+              period
+            );
+            triggerDownload(result.blob, result.filename);
+            successCount++;
+          } catch (err) {
+            errors.push(
+              `${record.nama_lengkap}: ${err instanceof Error ? err.message : 'Gagal generate'}`
+            );
+          }
+        }
+
+        if (successCount > 0) {
+          setExportSuccess(`${successCount} file BPA1 berhasil diunduh.`);
+        }
+        if (errors.length > 0) {
+          setExportError(`${errors.length} karyawan gagal: ${errors.join('; ')}`);
+        }
       }
     } catch (err) {
       if (err instanceof ExportValidationError) {
@@ -201,69 +249,33 @@ export function ExportPage() {
       }
     } finally {
       setIsExporting(false);
+      setIsVerifyingPassword(false);
     }
-  }, [records, hasPayrollData, selectedMonth, selectedYear, format, companyName]);
+  }, [user, companyId, companyNPWP, selectedMonth, selectedYear, format, stepUpPassword]);
 
-  const handleGenerateBPA1 = useCallback(async () => {
-    if (!hasPayrollData) {
-      setExportError(`Belum ada data penggajian untuk periode ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}. Proses penggajian terlebih dahulu.`);
+  const handleExportClick = useCallback(() => {
+    if (!user) return;
+    // Open step-up password dialog
+    setStepUpPassword('');
+    setStepUpError(null);
+    setShowPasswordDialog(true);
+  }, [user]);
+
+  const handleGenerateBPA1Click = useCallback(() => {
+    if (!user) return;
+    setFormat('pdf_bpa1');
+    setStepUpPassword('');
+    setStepUpError(null);
+    setShowPasswordDialog(true);
+  }, [user]);
+
+  const handlePasswordSubmit = useCallback(async () => {
+    if (!stepUpPassword) {
+      setStepUpError('Masukkan password Anda.');
       return;
     }
-
-    if (!companyNPWP) {
-      setExportError('NPWP Badan perusahaan belum dikonfigurasi.');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      'File BPA1 mengandung data pribadi (NIK) karyawan.\n\n' +
-      'Pastikan Anda menyimpan file ini di lokasi yang aman.\n\n' +
-      'Lanjutkan generate?'
-    );
-    if (!confirmed) return;
-
-    setExportError(null);
-    setExportSuccess(null);
-    setValidationErrors([]);
-    setIsExporting(true);
-
-    let successCount = 0;
-    const errors: string[] = [];
-
-    for (const record of records) {
-      try {
-        const result = await downloadBPA1(
-          {
-            nama: record.nama_lengkap,
-            nik: record.nik,
-            ptkp_status: (record as ExportRecord & { ptkp_status?: string }).ptkp_status ?? 'TK/0',
-            gross_income: record.gross_income,
-            pph21: record.pph21,
-          },
-          {
-            nama_perusahaan: companyName,
-            npwp_badan: companyNPWP,
-          },
-          { month: selectedMonth, year: selectedYear }
-        );
-        triggerDownload(result.blob, result.filename);
-        successCount++;
-      } catch (err) {
-        errors.push(
-          `${record.nama_lengkap}: ${err instanceof Error ? err.message : 'Gagal generate'}`
-        );
-      }
-    }
-
-    setIsExporting(false);
-
-    if (successCount > 0) {
-      setExportSuccess(`${successCount} file BPA1 berhasil diunduh.`);
-    }
-    if (errors.length > 0) {
-      setExportError(`${errors.length} karyawan gagal: ${errors.join('; ')}`);
-    }
-  }, [records, hasPayrollData, selectedMonth, selectedYear, companyName, companyNPWP]);
+    await handleStepUpAndExport();
+  }, [stepUpPassword, handleStepUpAndExport]);
 
   return (
     <div className="space-y-6">
@@ -313,29 +325,64 @@ export function ExportPage() {
           </div>
 
           <div className="flex flex-wrap gap-3 pt-2">
-            <Button variant="outline" onClick={runValidation} disabled={isExporting || loadingRecords}>
+            <Button variant="outline" disabled={isExporting}>
               Validasi Data
             </Button>
             {format !== 'pdf_bpa1' ? (
-              <Button onClick={handleExportFile} disabled={isExporting || !hasPayrollData}>
+              <Button onClick={handleExportClick} disabled={isExporting}>
                 {isExporting ? 'Mengekspor...' : `Download ${format.toUpperCase()}`}
               </Button>
             ) : (
-              <Button onClick={handleGenerateBPA1} disabled={isExporting || !hasPayrollData}>
+              <Button onClick={handleGenerateBPA1Click} disabled={isExporting}>
                 {isExporting ? 'Generating...' : 'Generate BPA1'}
               </Button>
             )}
           </div>
 
           <p className="text-xs text-ink-mute">
-            {loadingRecords ? 'Memuat data...' :
-              hasPayrollData
-                ? `${records.length} karyawan siap diekspor untuk periode ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}.`
-                : `Belum ada data penggajian untuk ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}. Proses penggajian terlebih dahulu.`
-            }
+            {isExporting ? 'Memproses...' : 'Konfigurasi periode dan format ekspor di atas.'}
           </p>
         </CardContent>
       </Card>
+
+      {/* Step-up Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={(open) => { if (!isVerifyingPassword) setShowPasswordDialog(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Password</DialogTitle>
+            <DialogDescription>
+              Ekspor data massal mengandung informasi pribadi (NIK) dan data penggajian.
+              Masukkan password Anda untuk melanjutkan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              type="password"
+              placeholder="Masukkan password"
+              value={stepUpPassword}
+              onChange={(e) => { setStepUpPassword(e.target.value); setStepUpError(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handlePasswordSubmit(); }}
+              autoFocus
+              disabled={isVerifyingPassword}
+            />
+            {stepUpError && (
+              <p className="text-sm text-[#ef4444]">{stepUpError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setShowPasswordDialog(false); setStepUpPassword(''); setStepUpError(null); }}
+              disabled={isVerifyingPassword}
+            >
+              Batal
+            </Button>
+            <Button onClick={handlePasswordSubmit} disabled={isVerifyingPassword || !stepUpPassword}>
+              {isVerifyingPassword ? 'Memverifikasi...' : 'Konfirmasi & Ekspor'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {exportSuccess && (
         <Card className="border-l-4 border-l-[#3ecf8e]">

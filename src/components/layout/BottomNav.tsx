@@ -1,27 +1,36 @@
-/**
- * BottomNav — Mobile bottom navigation bar
- * Visible only on mobile (<768px), hidden on desktop.
- * Provides quick access to the 4 most important sections.
- * Touch targets are minimum 44px as per Apple HIG / Material Design.
- */
-
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, Calculator, FileDown } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { getAccessibleResources } from '@/lib/rbac';
 
-const BOTTOM_NAV_ITEMS = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Karyawan', to: '/employees', icon: Users },
-  { label: 'Penggajian', to: '/payroll/process', icon: Calculator },
-  { label: 'Ekspor', to: '/export', icon: FileDown },
+interface BottomNavItem {
+  label: string;
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  resource: string;
+}
+
+const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, resource: 'employees' },
+  { label: 'Karyawan', to: '/employees', icon: Users, resource: 'employees' },
+  { label: 'Penggajian', to: '/payroll/process', icon: Calculator, resource: 'payroll' },
+  { label: 'Ekspor', to: '/export', icon: FileDown, resource: 'export' },
 ];
 
 export function BottomNav() {
   const { user } = useAuth();
 
-  // Only show for owner and hr_staff (not regular_staff)
-  if (!user || user.role === 'regular_staff') return null;
+  if (!user) return null;
+
+  const accessibleResources = getAccessibleResources(user.role);
+
+  // Filter items by RBAC permissions
+  const visibleItems = BOTTOM_NAV_ITEMS.filter(
+    (item) => accessibleResources.includes(item.resource as never)
+  );
+
+  if (visibleItems.length === 0) return null;
 
   return (
     <nav
@@ -30,7 +39,7 @@ export function BottomNav() {
       aria-label="Navigasi bawah"
     >
       <div className="flex items-stretch">
-        {BOTTOM_NAV_ITEMS.map((item) => (
+        {visibleItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

@@ -30,7 +30,6 @@ import {
   useDeleteEmployee,
 } from '@/features/employees/hooks/useEmployees';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { logEmployeeChange } from '@/lib/auditLogger';
 import type { Employee } from '@/types/employee';
 
 export function EmployeeListPage() {
@@ -58,17 +57,9 @@ export function EmployeeListPage() {
 
     setIsDeleting(true);
     try {
+      // SECURITY FIX (2026-05-15): RPC soft_delete_employee sudah mencatat audit log
+      // di server-side, jadi tidak perlu log lagi di client (menghindari duplikasi)
       await deleteMutation.mutateAsync(deleteTarget.id);
-
-      // Audit: log employee delete
-      await logEmployeeChange({
-        userId: user.id,
-        companyId: user.company_id,
-        userRole: user.role,
-        action: 'employee_delete',
-        employeeId: deleteTarget.id,
-        employeeName: deleteTarget.nama_lengkap,
-      });
 
       setDeleteTarget(null);
     } catch {
