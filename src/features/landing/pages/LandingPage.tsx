@@ -3,6 +3,7 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Calculator, Shield, Lock, Check, X, ChevronDown, FileDown, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { AnimatedText } from "../components/AnimatedText";
 import { FloatingBadge } from "../components/FloatingBadge";
 import { SpotlightCard } from "../components/SpotlightCard";
@@ -554,7 +555,11 @@ function SectionHeading({
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-canvas bg-mesh">
+    <div className="min-h-screen bg-canvas dark:bg-mesh">
+      {/* Floating theme toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
       <div className="mx-auto max-w-[1280px]">
         <HeroSection />
         <FeaturesSection />

@@ -28,7 +28,7 @@ export function SpotlightCard({ children, className }: SpotlightCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "relative overflow-hidden rounded-lg border border-hairline bg-canvas-night p-8",
+        "relative overflow-hidden rounded-xl border border-hairline bg-[#1c1c1c] p-8 shadow-lg",
         className
       )}
     >

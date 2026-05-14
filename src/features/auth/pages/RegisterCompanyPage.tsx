@@ -89,7 +89,7 @@ export function RegisterCompanyPage() {
   const displayError = formError || error
 
   return (
-    <div className="min-h-screen bg-canvas bg-mesh flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-canvas dark:bg-mesh flex items-center justify-center px-4 py-8">
       <div className="fixed top-4 left-4">
         <Link to="/" className="flex items-center gap-1.5 text-sm text-ink-mute hover:text-ink transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
