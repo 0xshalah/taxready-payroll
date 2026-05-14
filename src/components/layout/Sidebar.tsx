@@ -168,7 +168,7 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onMobileClose }
       {/* Desktop/Tablet sidebar */}
       <aside
         className={cn(
-          'hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 bg-canvas border-r border-hairline transition-all duration-200',
+          'hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 bg-canvas-card border-r border-hairline transition-all duration-200 backdrop-blur-sm',
           collapsed ? 'md:w-16' : 'md:w-60'
         )}
         aria-label="Navigasi sidebar"

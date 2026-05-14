@@ -12,7 +12,7 @@ export const LEGAL_DISCLAIMER_SHORT = `Hasil perhitungan bersifat estimasi. Buka
 
 export function Footer() {
   return (
-    <footer className="border-t border-hairline bg-canvas-soft px-4 py-4 md:px-6">
+    <footer className="border-t border-hairline bg-canvas-card/50 px-4 py-4 md:px-6 backdrop-blur-sm">
       <div className="max-w-5xl">
         <p className="text-[11px] leading-relaxed text-ink-mute">
           <span className="font-medium text-ink-mute">Disclaimer:</span>{' '}

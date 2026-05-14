@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
+    --background: 240 20% 4%;
+    --foreground: 240 10% 95%;
+    --card: 240 15% 8%;
+    --card-foreground: 240 10% 95%;
+    --popover: 240 15% 7%;
+    --popover-foreground: 240 10% 95%;
     --primary: 153 64% 53%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 44%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
+    --primary-foreground: 240 20% 4%;
+    --secondary: 240 15% 12%;
+    --secondary-foreground: 240 10% 90%;
+    --muted: 240 15% 12%;
+    --muted-foreground: 240 10% 55%;
+    --accent: 240 15% 15%;
+    --accent-foreground: 240 10% 95%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 87%;
-    --input: 0 0% 87%;
+    --border: 240 10% 15%;
+    --input: 240 10% 15%;
     --ring: 153 64% 53%;
-    --radius: 8px;
+    --radius: 12px;
   }
 
   * {
@@ -31,7 +31,75 @@
   }
 
   body {
-    @apply bg-white text-[#171717] font-sans antialiased;
+    @apply bg-canvas text-ink font-sans antialiased;
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Scrollbar styling for luxury feel */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+@layer components {
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-canvas-card border border-hairline rounded-xl;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-card-elevated {
+    @apply bg-canvas-elevated border border-hairline-strong rounded-xl;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #3ecf8e 0%, #06b6d4 100%);
+  }
+
+  /* Glow button */
+  .btn-glow {
+    @apply relative overflow-hidden;
+    box-shadow: 0 0 20px rgba(62, 207, 142, 0.2);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 30px rgba(62, 207, 142, 0.35);
+  }
+
+  /* Mesh background */
+  .bg-mesh {
+    background-image:
+      radial-gradient(at 20% 20%, rgba(62, 207, 142, 0.06) 0%, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 50%);
+  }
+
+  /* Subtle border glow on hover */
+  .hover-glow {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .hover-glow:hover {
+    border-color: rgba(62, 207, 142, 0.3);
+    box-shadow: 0 0 15px rgba(62, 207, 142, 0.1);
   }
 }

@@ -27,7 +27,7 @@ export function DashboardLayout({ companyName }: DashboardLayoutProps) {
   const handleMobileClose = useCallback(() => setMobileOpen(false), []);
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas bg-mesh">
       {/* Sidebar */}
       <Sidebar
         collapsed={false}

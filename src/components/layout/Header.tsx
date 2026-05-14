@@ -45,7 +45,7 @@ export function Header({ onMenuClick, companyName, className }: HeaderProps) {
   return (
     <header
       className={cn(
-        'flex items-center justify-between bg-canvas border-b border-hairline px-4 py-3 md:px-6',
+        'flex items-center justify-between bg-canvas-card/50 border-b border-hairline px-4 py-3 md:px-6 backdrop-blur-sm',
         className
       )}
     >
