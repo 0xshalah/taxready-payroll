@@ -25,10 +25,10 @@ const buttonVariants = cva(
           "hover:bg-canvas-elevated hover:text-ink rounded-lg",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-10 px-6",
-        icon: "h-9 w-9",
+        default: "h-11 px-4 py-2",   // 44px — Apple HIG minimum touch target
+        sm: "h-9 px-3 text-xs",       // 36px — acceptable for secondary actions
+        lg: "h-12 px-6",              // 48px — Material Design recommended
+        icon: "h-11 w-11",            // 44px square touch target
       },
     },
     defaultVariants: {

@@ -13,6 +13,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { BottomNav } from './BottomNav';
 import { cn } from '@/lib/utils';
 
 export interface DashboardLayoutProps {
@@ -46,14 +47,17 @@ export function DashboardLayout({ companyName }: DashboardLayoutProps) {
           companyName={companyName}
         />
 
-        {/* Page content */}
-        <main className="flex-1 p-4 md:p-6">
+        {/* Page content — extra bottom padding on mobile for BottomNav */}
+        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
           <Outlet />
         </main>
 
         {/* Legal Disclaimer Footer */}
         <Footer />
       </div>
+
+      {/* Mobile bottom navigation */}
+      <BottomNav />
     </div>
   );
 }

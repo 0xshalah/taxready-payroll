@@ -101,6 +101,8 @@
   body {
     @apply bg-canvas text-ink font-sans antialiased;
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    /* Safe area insets for iPhone notch/home indicator */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Dark mode scrollbar */

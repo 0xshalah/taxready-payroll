@@ -80,7 +80,7 @@ function HeroSection() {
               {/* Dashboard mockup content */}
               <div className="bg-canvas-card p-6">
                 {/* Top summary cards */}
-                <div className="grid grid-cols-4 gap-3 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                   {[
                     { label: "Karyawan Aktif", value: "32" },
                     { label: "Total Bruto", value: "Rp 248.5 jt" },

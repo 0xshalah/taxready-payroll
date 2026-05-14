@@ -393,10 +393,10 @@ export function PayrollProcessPage() {
             <p className="text-xs text-ink-mute mb-3">Isi uang lembur untuk karyawan yang bekerja lembur bulan ini. Kosongkan jika tidak ada lembur.</p>
             <div className="space-y-2">
               {activeEmployees.map((emp) => (
-                <div key={emp.id} className="flex items-center gap-3">
-                  <span className="text-sm text-ink w-48 truncate">{emp.nama_lengkap}</span>
-                  <div className="flex items-center gap-1.5 flex-1">
-                    <span className="text-xs text-ink-mute">Rp</span>
+                <div key={emp.id} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <span className="text-sm text-ink w-full sm:w-40 truncate">{emp.nama_lengkap}</span>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="text-xs text-ink-mute shrink-0">Rp</span>
                     <input
                       type="number"
                       min={0}
@@ -404,7 +404,7 @@ export function PayrollProcessPage() {
                       value={lemburMap[emp.id] ?? ''}
                       onChange={e => setLemburMap(prev => ({ ...prev, [emp.id]: Number(e.target.value) || 0 }))}
                       disabled={isProcessing}
-                      className="flex h-8 w-full max-w-[160px] rounded-xs border border-hairline bg-canvas px-3 py-1 text-sm text-ink placeholder:text-ink-faint focus-visible:outline-none focus-visible:border-primary disabled:opacity-50"
+                      className="flex h-10 w-full rounded-lg border border-hairline bg-canvas-soft px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus-visible:outline-none focus-visible:border-primary disabled:opacity-50"
                     />
                   </div>
                 </div>

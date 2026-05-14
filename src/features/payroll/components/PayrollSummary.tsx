@@ -26,10 +26,10 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value }: SummaryCardProps) {
   return (
-    <Card className="flex-1 min-w-[180px]">
-      <CardContent className="p-4">
-        <p className="text-xs text-ink-mute uppercase tracking-wide">{label}</p>
-        <p className="text-xl font-medium text-ink mt-1 font-mono">{value}</p>
+    <Card className="flex-1 min-w-[140px]">
+      <CardContent className="p-3 md:p-4">
+        <p className="text-[10px] md:text-xs text-ink-mute uppercase tracking-wide">{label}</p>
+        <p className="text-base md:text-xl font-medium text-ink mt-1 font-mono truncate">{value}</p>
       </CardContent>
     </Card>
   );
@@ -43,7 +43,7 @@ export function PayrollSummary({ result }: PayrollSummaryProps) {
   const totalKaryawan = result.success_count + result.failed_count;
 
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-3 overflow-x-auto pb-1">
       <SummaryCard label="Total Karyawan" value={`${totalKaryawan}`} />
       <SummaryCard label="Total Bruto" value={formatCurrency(totalBruto)} />
       <SummaryCard label="Total PPh 21" value={formatCurrency(totalPPh21)} />

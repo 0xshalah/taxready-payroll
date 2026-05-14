@@ -6,6 +6,8 @@ const Table = React.forwardRef<
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
+    {/* Gradient fade on right edge — signals horizontal scrollability on mobile */}
+    <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-canvas-card to-transparent z-10 md:hidden" />
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
