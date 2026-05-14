@@ -122,15 +122,14 @@
 
 @layer components {
   /* ─── View Transitions: Circular Reveal ─── */
-  /* Nonaktifkan cross-fade default browser */
+  /* Nonaktifkan cross-fade default — kita pakai clip-path sendiri */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  /* Eclipse (Light→Dark): old view di atas, di-clip menyusut */
-  /* Sunrise (Dark→Light): new view di atas, di-clip melebar */
+  /* New view selalu di atas — dia yang di-clip melebar */
   ::view-transition-old(root) {
     z-index: 1;
   }
@@ -138,15 +137,16 @@
     z-index: 9999;
   }
 
-  /* Hindari background-color transition yang mengganggu */
+  /* Pastikan tidak ada transition CSS yang mengganggu snapshot */
   html {
-    transition: background-color 0s;
+    transition: none !important;
   }
 
-  /* Respect reduced motion preference */
+  /* Aksesibilitas: skip animasi jika user prefer reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
       animation: none !important;
     }
   }

@@ -1,11 +1,12 @@
 /**
- * Theme Provider — Dark/Light mode with View Transitions API Circular Reveal
+ * Theme Provider — Circular Reveal with View Transitions API
  * 
- * - "Eclipse" Effect: Light → Dark — old view shrinks (circle menyusut)
- * - "Sunrise" Effect: Dark → Light — new view expands (circle melebar)
+ * Eclipse (Light → Dark): Lingkaran GELAP melebar dari titik klik menutupi layar terang
+ * Sunrise (Dark → Light): Lingkaran TERANG melebar dari titik klik menutupi layar gelap
  * 
- * Menggunakan document.startViewTransition() + Web Animations API (WAAPI)
- * untuk animasi clip-path yang berpusat pada koordinat klik.
+ * Kedua arah menggunakan ::view-transition-new(root) yang MELEBAR (expand).
+ * Perbedaannya hanya state DOM yang diterapkan di dalam callback.
+ * Ini memastikan animasi selalu smooth karena hanya satu arah (expand).
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
@@ -43,56 +44,46 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   const toggleTheme = useCallback((event?: React.MouseEvent) => {
-    const isDark = themeRef.current !== 'dark'; // Target: apakah mau jadi dark?
-    const newTheme: Theme = isDark ? 'dark' : 'light';
+    const newTheme: Theme = themeRef.current === 'dark' ? 'light' : 'dark';
 
-    // Fallback untuk browser yang belum mendukung View Transitions API
+    // Fallback
     if (!document.startViewTransition) {
       setThemeState(newTheme);
       return;
     }
 
-    // Ambil koordinat klik (atau tengah layar jika tidak ada event)
+    // Koordinat klik
     const x = event?.clientX ?? window.innerWidth / 2;
     const y = event?.clientY ?? window.innerHeight / 2;
 
-    // Hitung radius maksimal (jarak dari titik klik ke sudut terjauh layar)
+    // Radius maksimal — dari titik klik ke sudut terjauh
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
     );
 
-    // Mulai transisi
+    // Mulai View Transition
     const transition = document.startViewTransition(() => {
-      // Terapkan perubahan state DOM
       setThemeState(newTheme);
     });
 
-    // Tunggu hingga pseudo-elements transisi siap
     transition.ready.then(() => {
-      // Definisikan clip-path keyframes
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${endRadius}px at ${x}px ${y}px)`,
-      ];
-
-      // Eclipse (→ dark): Layar LAMA di-clip menyusut (old view shrinks away)
-      // Sunrise (→ light): Layar BARU di-clip melebar (new view expands in)
+      // Selalu animate ::view-transition-new(root) MELEBAR dari titik klik
+      // Ini yang paling smooth karena GPU hanya perlu expand satu layer
       document.documentElement.animate(
         {
-          clipPath: isDark ? [...clipPath].reverse() : clipPath,
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`,
+          ],
         },
         {
-          duration: 500,
-          easing: 'ease-in-out',
-          pseudoElement: isDark
-            ? '::view-transition-old(root)'
-            : '::view-transition-new(root)',
+          duration: 450,
+          easing: 'cubic-bezier(0.25, 1, 0.5, 1)', // Smooth snap di akhir
+          pseudoElement: '::view-transition-new(root)',
         }
       );
-    }).catch(() => {
-      // Transition was skipped (prefers-reduced-motion or interrupted)
-    });
+    }).catch(() => {});
   }, []);
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
