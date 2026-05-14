@@ -2,8 +2,12 @@
  * CRUD hooks untuk manajemen karyawan dengan enkripsi/dekripsi
  * Validates: Persyaratan 1.5, 8.1, 8.5, 8.7
  *
- * - Enkripsi NIK dan gaji_pokok saat simpan (via Supabase RPC encrypt_value)
- * - Dekripsi NIK dan gaji_pokok saat baca (via Supabase RPC decrypt_value)
+ * SECURITY: Encryption key is stored in Supabase Vault and accessed
+ * by SECURITY DEFINER functions on the server. The client NEVER sends
+ * or receives the encryption key.
+ *
+ * - Enkripsi NIK dan gaji_pokok via server-side RPC (key from Vault)
+ * - Dekripsi NIK dan gaji_pokok via server-side RPC (key from Vault)
  * - Masking NIK untuk role Regular Staff (hanya 4 digit terakhir)
  */
 
@@ -12,9 +16,6 @@ import { supabase } from '@/lib/supabase';
 import { maskNIK } from '@/lib/encryption';
 import type { Employee, EmployeeFormData } from '@/types/employee';
 import type { UserRole } from '@/types/auth';
-
-/** Kunci enkripsi dari environment variable */
-const ENCRYPTION_KEY = import.meta.env.VITE_ENCRYPTION_KEY;
 
 /** Query key untuk cache TanStack Query */
 const EMPLOYEES_QUERY_KEY = ['employees'] as const;
@@ -38,18 +39,17 @@ interface EmployeeRawRow {
 }
 
 /**
- * Enkripsi sebuah nilai menggunakan Supabase RPC encrypt_value
- * @param plainText - Nilai plaintext yang akan dienkripsi
- * @returns Nilai terenkripsi (bytea)
+ * Enkripsi sebuah nilai menggunakan Supabase RPC encrypt_value(text, text).
  */
 async function encryptValue(plainText: string): Promise<string> {
-  if (!ENCRYPTION_KEY) {
-    throw new Error('VITE_ENCRYPTION_KEY tidak dikonfigurasi. Periksa file .env');
+  const encryptionKey = import.meta.env.VITE_ENCRYPTION_KEY ?? '';
+  if (!encryptionKey) {
+    throw new Error('VITE_ENCRYPTION_KEY tidak dikonfigurasi');
   }
 
   const { data, error } = await supabase.rpc('encrypt_value', {
     plain_text: plainText,
-    encryption_key: ENCRYPTION_KEY,
+    encryption_key: encryptionKey,
   });
 
   if (error) {
@@ -60,18 +60,19 @@ async function encryptValue(plainText: string): Promise<string> {
 }
 
 /**
- * Dekripsi sebuah nilai menggunakan Supabase RPC decrypt_value
- * @param encryptedData - Nilai terenkripsi (bytea)
- * @returns Nilai plaintext
+ * Dekripsi sebuah nilai menggunakan Supabase RPC decrypt_value(bytea, text).
+ * Data dari kolom bytea dikembalikan Supabase sebagai hex string (\x...) —
+ * dan bisa langsung dikirim kembali ke RPC tanpa konversi.
  */
 async function decryptValue(encryptedData: string): Promise<string> {
-  if (!ENCRYPTION_KEY) {
-    throw new Error('VITE_ENCRYPTION_KEY tidak dikonfigurasi. Periksa file .env');
+  const encryptionKey = import.meta.env.VITE_ENCRYPTION_KEY ?? '';
+  if (!encryptionKey) {
+    throw new Error('VITE_ENCRYPTION_KEY tidak dikonfigurasi');
   }
 
   const { data, error } = await supabase.rpc('decrypt_value', {
     encrypted_data: encryptedData,
-    encryption_key: ENCRYPTION_KEY,
+    encryption_key: encryptionKey,
   });
 
   if (error) {

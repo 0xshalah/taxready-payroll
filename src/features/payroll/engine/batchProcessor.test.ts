@@ -81,7 +81,7 @@ function createValidEmployee(overrides: Partial<EmployeePayrollData> = {}): Empl
   return {
     employee_id: 'emp-001',
     nama: 'Budi Santoso',
-    nik: '3201234567890001',
+    nik: '3201231505950001',
     ptkp_status: 'TK/0',
     gaji_pokok: 8000000,
     tunjangan_tetap: 1000000,
@@ -198,7 +198,7 @@ describe('validateAllEmployees', () => {
   it('mengembalikan array kosong jika semua karyawan valid', () => {
     const employees = [
       createValidEmployee({ employee_id: 'emp-001' }),
-      createValidEmployee({ employee_id: 'emp-002', nik: '3201234567890002' }),
+      createValidEmployee({ employee_id: 'emp-002', nik: '3201231505950002' }),
     ];
     const errors = validateAllEmployees(employees);
     expect(errors).toHaveLength(0);
@@ -222,9 +222,9 @@ describe('validateAllEmployees', () => {
 describe('processBatchPayroll', () => {
   it('memproses batch berhasil untuk beberapa karyawan', () => {
     const employees = [
-      createValidEmployee({ employee_id: 'emp-001', nama: 'Budi', nik: '3201234567890001' }),
-      createValidEmployee({ employee_id: 'emp-002', nama: 'Ani', nik: '3201234567890002', gaji_pokok: 6000000, tunjangan_tetap: 500000, uang_lembur: 0 }),
-      createValidEmployee({ employee_id: 'emp-003', nama: 'Citra', nik: '3201234567890003', gaji_pokok: 10000000, tunjangan_tetap: 2000000, uang_lembur: 1000000 }),
+      createValidEmployee({ employee_id: 'emp-001', nama: 'Budi', nik: '3201231505950001' }),
+      createValidEmployee({ employee_id: 'emp-002', nama: 'Ani', nik: '3201231505950002', gaji_pokok: 6000000, tunjangan_tetap: 500000, uang_lembur: 0 }),
+      createValidEmployee({ employee_id: 'emp-003', nama: 'Citra', nik: '3201231505950003', gaji_pokok: 10000000, tunjangan_tetap: 2000000, uang_lembur: 1000000 }),
     ];
 
     const input = createBatchInput(employees);
@@ -305,7 +305,7 @@ describe('processBatchPayroll', () => {
       createValidEmployee({
         employee_id: 'emp-001',
         nama: 'Budi',
-        nik: '3201234567890001',
+        nik: '3201231505950001',
         ptkp_status: 'TK/0',
         gaji_pokok: 8000000,
         tunjangan_tetap: 1000000,
@@ -315,7 +315,7 @@ describe('processBatchPayroll', () => {
       createValidEmployee({
         employee_id: 'emp-002',
         nama: 'Ani',
-        nik: '3201234567890002',
+        nik: '3201231505950002',
         ptkp_status: 'TK/0',
         gaji_pokok: 20000000,
         tunjangan_tetap: 4000000,
@@ -325,7 +325,7 @@ describe('processBatchPayroll', () => {
       createValidEmployee({
         employee_id: 'emp-003',
         nama: 'Citra',
-        nik: '3201234567890003',
+        nik: '3201231505950003',
         ptkp_status: 'TK/0',
         gaji_pokok: 5000000,
         tunjangan_tetap: 1000000,
@@ -376,8 +376,8 @@ describe('processBatchPayroll', () => {
   // Ringkasan totals
   it('menghitung ringkasan total_net_pay dengan benar', () => {
     const employees = [
-      createValidEmployee({ employee_id: 'emp-001', nik: '3201234567890001', gaji_pokok: 8000000, tunjangan_tetap: 1000000, uang_lembur: 500000 }),
-      createValidEmployee({ employee_id: 'emp-002', nik: '3201234567890002', gaji_pokok: 6000000, tunjangan_tetap: 500000, uang_lembur: 0 }),
+      createValidEmployee({ employee_id: 'emp-001', nik: '3201231505950001', gaji_pokok: 8000000, tunjangan_tetap: 1000000, uang_lembur: 500000 }),
+      createValidEmployee({ employee_id: 'emp-002', nik: '3201231505950002', gaji_pokok: 6000000, tunjangan_tetap: 500000, uang_lembur: 0 }),
     ];
 
     const input = createBatchInput(employees);
@@ -394,7 +394,7 @@ describe('processBatchPayroll', () => {
       employees.push(
         createValidEmployee({
           employee_id: `emp-${String(i).padStart(3, '0')}`,
-          nik: `320123456789${String(i).padStart(4, '0')}`,
+          nik: `320123150595${String(i).padStart(4, '0')}`,
         }),
       );
     }
@@ -411,7 +411,7 @@ describe('processBatchPayroll', () => {
       employees.push(
         createValidEmployee({
           employee_id: `emp-${String(i).padStart(3, '0')}`,
-          nik: `320123456789${String(i).padStart(4, '0')}`,
+          nik: `320123150595${String(i).padStart(4, '0')}`,
         }),
       );
     }
@@ -426,7 +426,7 @@ describe('processBatchPayroll', () => {
   // Validasi error: NIK tidak valid
   it('menolak batch jika ada karyawan dengan NIK tidak valid', () => {
     const employees = [
-      createValidEmployee({ employee_id: 'emp-001', nik: '320123456789000' }), // 15 digit
+      createValidEmployee({ employee_id: 'emp-001', nik: '320123150595000' }), // 15 digit
     ];
 
     const input = createBatchInput(employees);

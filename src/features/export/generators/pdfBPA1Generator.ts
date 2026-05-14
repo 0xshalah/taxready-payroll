@@ -331,7 +331,17 @@ export function BPA1Document({ data }: { data: BPA1Data }) {
         React.createElement(
           Text,
           { style: styles.footerText },
-          `Dokumen ini digenerate oleh Tax-Ready Payroll pada ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+          'Dasar Hukum: PP 58/2023 jo. PMK 168/2023 tentang Tarif Efektif Rata-rata (TER) PPh Pasal 21.'
+        ),
+        React.createElement(
+          Text,
+          { style: { ...styles.footerText, marginTop: 4 } },
+          `Dokumen ini digenerate oleh Tax-Ready Payroll v0.1.0 pada ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+        ),
+        React.createElement(
+          Text,
+          { style: { ...styles.footerText, marginTop: 4 } },
+          'Disclaimer: Hasil perhitungan bersifat estimasi. Bukan nasihat pajak profesional. Pengguna bertanggung jawab atas kepatuhan pelaporan pajak.'
         )
       )
     )

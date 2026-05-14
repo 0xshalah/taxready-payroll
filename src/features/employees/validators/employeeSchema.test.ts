@@ -12,7 +12,7 @@ import {
 
 describe('employeeFormSchema', () => {
   const validData = {
-    nik: '3201234567890123',
+    nik: '3201231505950001',
     nama_lengkap: 'Budi Santoso',
     ptkp_status: 'TK/0' as const,
     tanggal_bergabung: '2024-01-15',
@@ -170,7 +170,7 @@ describe('employeeFormSchema', () => {
 
 describe('validateNIK', () => {
   it('should return valid for correct 16-digit NIK', () => {
-    const result = validateNIK('3201234567890123');
+    const result = validateNIK('3201231505950001');
     expect(result.valid).toBe(true);
     expect(result.error).toBeUndefined();
   });
@@ -206,20 +206,20 @@ describe('validateNIK', () => {
   });
 
   it('should return error for NIK longer than 16 digits', () => {
-    const result = validateNIK('32012345678901234');
+    const result = validateNIK('32012315059500014');
     expect(result.valid).toBe(false);
     expect(result.error).toBe('NIK harus terdiri dari 16 digit angka');
   });
 
   it('should trim whitespace before validation', () => {
-    const result = validateNIK(' 3201234567890123 ');
+    const result = validateNIK(' 3201231505950001 ');
     expect(result.valid).toBe(true);
   });
 });
 
 describe('validateEmployeeForPayroll', () => {
   const validEmployee = {
-    nik: '3201234567890123',
+    nik: '3201231505950001',
     nama_lengkap: 'Budi Santoso',
     ptkp_status: 'TK/0',
     tanggal_bergabung: '2024-01-15',

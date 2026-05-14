@@ -23,10 +23,11 @@
 
 import type { ExportRecord, ExportPeriod, GeneratedFile } from './csvGenerator';
 import { validateExportRecords, sanitizeFilename, ExportValidationError } from './csvGenerator';
+import { createExportMetadata, formatMetadataAsXML } from './exportMetadata';
 
 /**
  * Generate file XML format Coretax.
- * Struktur: <coretax><employees><employee>...</employee></employees></coretax>
+ * Struktur: <coretax><metadata>...</metadata><employees><employee>...</employee></employees></coretax>
  */
 export function generateCoretaxXML(
   companyName: string,
@@ -44,10 +45,15 @@ export function generateCoretaxXML(
   const monthStr = String(period.month).padStart(2, '0');
   const filename = `${sanitizedName}_${period.year}_${monthStr}.xml`;
 
+  // Generate metadata
+  const metadata = createExportMetadata(period.month, period.year, companyName);
+  const metadataXML = formatMetadataAsXML(metadata);
+
   // Generate XML content
   const xmlLines: string[] = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<coretax>',
+    metadataXML,
     '  <employees>',
   ];
 

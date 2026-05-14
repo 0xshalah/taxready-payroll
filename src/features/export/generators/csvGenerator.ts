@@ -1,13 +1,18 @@
 /**
  * Generator CSV untuk ekspor laporan bulanan format Coretax
  * Validates: Persyaratan 5.1, 5.2, 5.3, 5.4
+ * Validates: Fitur Transparansi #2 (disclaimer), #4 (metadata versi tarif + timestamp)
  *
  * File ekspor Coretax HANYA mengandung 4 field:
  * 1. NIK (16 digit)
  * 2. Nama Lengkap
  * 3. Penghasilan Bruto (angka bulat)
  * 4. Potongan PPh 21 (angka bulat)
+ *
+ * Ditambahkan metadata header berisi versi tarif, timestamp, dan disclaimer.
  */
+
+import { createExportMetadata, formatMetadataAsCSVComments } from './exportMetadata';
 
 /** Record data untuk ekspor Coretax */
 export interface ExportRecord {
@@ -102,6 +107,7 @@ export function validateExportRecords(records: ExportRecord[]): ValidationResult
  * Generate file CSV format Coretax.
  * Format: comma-separated, dengan header row.
  * Field: NIK, Nama Lengkap, Penghasilan Bruto, Potongan PPh 21
+ * Includes: metadata comments (versi tarif, timestamp, disclaimer)
  */
 export function generateCoretaxCSV(
   companyName: string,
@@ -119,6 +125,10 @@ export function generateCoretaxCSV(
   const monthStr = String(period.month).padStart(2, '0');
   const filename = `${sanitizedName}_${period.year}_${monthStr}.csv`;
 
+  // Generate metadata header
+  const metadata = createExportMetadata(period.month, period.year, companyName);
+  const metadataComments = formatMetadataAsCSVComments(metadata);
+
   // Generate CSV content
   const header = 'NIK,Nama Lengkap,Penghasilan Bruto,Potongan PPh 21';
   const rows = records.map(record => {
@@ -129,7 +139,7 @@ export function generateCoretaxCSV(
     return `${nik},${nama},${bruto},${pph21}`;
   });
 
-  const content = [header, ...rows].join('\n');
+  const content = [metadataComments, header, ...rows].join('\n');
 
   return { filename, content };
 }

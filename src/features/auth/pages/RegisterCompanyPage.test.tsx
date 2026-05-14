@@ -114,13 +114,13 @@ describe('RegisterCompanyPage', () => {
     expect(mockRegister).not.toHaveBeenCalled()
   })
 
-  it('shows error when password is less than 6 characters', async () => {
+  it('shows error when password is less than 8 characters', async () => {
     renderRegisterPage()
 
-    fillForm({ password: '12345', konfirmasiPassword: '12345' })
+    fillForm({ password: '1234567', konfirmasiPassword: '1234567' })
     fireEvent.click(screen.getByRole('button', { name: /daftar perusahaan/i }))
 
-    expect(await screen.findByText('Password minimal 6 karakter')).toBeInTheDocument()
+    expect(await screen.findByText('Password minimal 8 karakter')).toBeInTheDocument()
     expect(mockRegister).not.toHaveBeenCalled()
   })
 

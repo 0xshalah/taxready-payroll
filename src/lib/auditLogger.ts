@@ -33,7 +33,7 @@ export interface AuditLogEntry {
 /**
  * Catat entri audit ke tabel audit_logs.
  * Tidak melempar error jika pencatatan gagal — hanya log ke console.
- * Untuk operasi kritis, caller harus menangani error sendiri.
+ * Gunakan logAuditEntryStrict() untuk operasi kritis yang HARUS tercatat.
  */
 export async function logAuditEntry(entry: AuditLogEntry): Promise<void> {
   try {
@@ -52,6 +52,29 @@ export async function logAuditEntry(entry: AuditLogEntry): Promise<void> {
     }
   } catch (err) {
     console.error('[AuditLogger] Exception saat mencatat audit log:', err);
+  }
+}
+
+/**
+ * Catat entri audit STRICT — melempar error jika pencatatan gagal.
+ * Gunakan untuk operasi kritis (payroll, salary change, role change)
+ * di mana operasi HARUS dibatalkan jika audit gagal dicatat.
+ *
+ * @throws Error jika audit log gagal ditulis
+ */
+export async function logAuditEntryStrict(entry: AuditLogEntry): Promise<void> {
+  const { error } = await supabase.from('audit_logs').insert({
+    company_id: entry.company_id,
+    user_id: entry.user_id,
+    user_role: entry.user_role,
+    action_type: entry.action_type,
+    entity_type: entry.entity_type,
+    entity_id: entry.entity_id ?? null,
+    changes: entry.changes ?? null,
+  });
+
+  if (error) {
+    throw new Error(`[AuditLogger] Operasi dibatalkan — gagal mencatat audit log: ${error.message}`);
   }
 }
 
@@ -87,6 +110,7 @@ export async function logUnauthorizedAccess(params: {
 
 /**
  * Catat proses penggajian (payroll_process).
+ * STRICT: Melempar error jika audit gagal — payroll HARUS tercatat.
  */
 export async function logPayrollProcess(params: {
   userId: string;
@@ -98,7 +122,7 @@ export async function logPayrollProcess(params: {
   employeeCount: number;
   totalNetPay: number;
 }): Promise<void> {
-  await logAuditEntry({
+  await logAuditEntryStrict({
     company_id: params.companyId,
     user_id: params.userId,
     user_role: params.userRole,
@@ -143,6 +167,7 @@ export async function logEmployeeChange(params: {
 
 /**
  * Catat perubahan gaji karyawan (salary_change).
+ * STRICT: Melempar error jika audit gagal — perubahan gaji HARUS tercatat.
  * Dicatat terpisah dari employee_update karena merupakan data sensitif.
  */
 export async function logSalaryChange(params: {
@@ -154,7 +179,7 @@ export async function logSalaryChange(params: {
   oldSalary: number;
   newSalary: number;
 }): Promise<void> {
-  await logAuditEntry({
+  await logAuditEntryStrict({
     company_id: params.companyId,
     user_id: params.userId,
     user_role: params.userRole,
@@ -221,6 +246,7 @@ export async function logSettingsChange(params: {
 
 /**
  * Catat perubahan peran pengguna (role_change).
+ * STRICT: Melempar error jika audit gagal — perubahan role HARUS tercatat.
  */
 export async function logRoleChange(params: {
   userId: string;
@@ -231,7 +257,7 @@ export async function logRoleChange(params: {
   oldRole: UserRole;
   newRole: UserRole;
 }): Promise<void> {
-  await logAuditEntry({
+  await logAuditEntryStrict({
     company_id: params.companyId,
     user_id: params.userId,
     user_role: params.userRole,

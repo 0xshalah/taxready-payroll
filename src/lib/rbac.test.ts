@@ -158,9 +158,9 @@ describe('checkPermission', () => {
 });
 
 describe('getAccessibleResources', () => {
-  it('Owner dapat akses semua 8 resource', () => {
+  it('Owner dapat akses semua 9 resource', () => {
     const resources = getAccessibleResources('owner');
-    expect(resources).toHaveLength(8);
+    expect(resources).toHaveLength(9);
     expect(resources).toContain('employees');
     expect(resources).toContain('payroll');
     expect(resources).toContain('export');
@@ -169,16 +169,18 @@ describe('getAccessibleResources', () => {
     expect(resources).toContain('user_management');
     expect(resources).toContain('profile');
     expect(resources).toContain('my_payslips');
+    expect(resources).toContain('tarif_changelog');
   });
 
-  it('HR Staff dapat akses 5 resource', () => {
+  it('HR Staff dapat akses 6 resource', () => {
     const resources = getAccessibleResources('hr_staff');
-    expect(resources).toHaveLength(5);
+    expect(resources).toHaveLength(6);
     expect(resources).toContain('employees');
     expect(resources).toContain('payroll');
     expect(resources).toContain('export');
     expect(resources).toContain('profile');
     expect(resources).toContain('my_payslips');
+    expect(resources).toContain('tarif_changelog');
   });
 
   it('Regular Staff hanya dapat akses 2 resource', () => {

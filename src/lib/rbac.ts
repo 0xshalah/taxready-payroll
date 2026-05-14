@@ -25,6 +25,7 @@ const PERMISSION_MATRIX: Record<UserRole, Partial<Record<Resource, Action[]>>> =
     user_management: ['read', 'write', 'delete'],
     profile: ['read', 'write', 'delete'],
     my_payslips: ['read', 'write', 'delete'],
+    tarif_changelog: ['read'],
   },
   hr_staff: {
     employees: ['read', 'write'],
@@ -32,6 +33,7 @@ const PERMISSION_MATRIX: Record<UserRole, Partial<Record<Resource, Action[]>>> =
     export: ['read', 'write'],
     profile: ['read', 'write'],
     my_payslips: ['read', 'write'],
+    tarif_changelog: ['read'],
   },
   regular_staff: {
     profile: ['read'],

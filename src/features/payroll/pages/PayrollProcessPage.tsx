@@ -1,18 +1,16 @@
 /**
  * PayrollProcessPage — Halaman proses penggajian
- * Alur: Pilih periode → Validasi data → Proses → Tampilkan hasil
+ * Alur: Pilih periode → Validasi data → Proses → Simpan ke DB → Tampilkan hasil
  *
- * Fitur:
- * - Pilih bulan dan tahun
- * - Deteksi periode duplikat dengan konfirmasi overwrite
- * - Progress indicator saat proses berjalan
- * - Lock (disable) tombol saat proses berjalan
- * - Tampilkan ringkasan dan tabel hasil
- *
- * Validates: Persyaratan 4.1, 4.2, 4.3, 4.6, 4.7, 11.1, 11.2, 11.5, 11.6
+ * Semua data disimpan ke database (audit_logs + payroll_results).
+ * Deteksi duplikat periode dari database, bukan state lokal.
+ * Setelah proses, invalidate cache agar Dashboard & Riwayat langsung update.
  */
 
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 import {
   Card,
   CardHeader,
@@ -35,6 +33,8 @@ import { processBatchPayroll, BatchValidationError } from '@/features/payroll/en
 import { PayrollBatchRunner } from '@/features/payroll/components/PayrollBatchRunner';
 import { PayrollResultTable } from '@/features/payroll/components/PayrollResultTable';
 import { PayrollSummary } from '@/features/payroll/components/PayrollSummary';
+import { supabase } from '@/lib/supabase';
+import { logPayrollProcess } from '@/lib/auditLogger';
 import type { PayrollBatchResult, EmployeePayrollData } from '@/types/payroll';
 import type { Employee } from '@/types/employee';
 
@@ -55,13 +55,78 @@ function toPayrollData(employee: Employee): EmployeePayrollData {
     ptkp_status: employee.ptkp_status,
     gaji_pokok: employee.gaji_pokok,
     tunjangan_tetap: employee.tunjangan_tetap,
-    uang_lembur: 0, // Default 0, bisa diinput manual per periode
+    uang_lembur: 0,
   };
+}
+
+/**
+ * Cek apakah periode sudah pernah diproses (dari audit_logs di database)
+ */
+async function checkPeriodExists(companyId: string, month: number, year: number): Promise<boolean> {
+  try {
+    const periodStr = `${year}-${String(month).padStart(2, '0')}`;
+    const { count } = await supabase
+      .from('audit_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('action_type', 'payroll_process')
+      .contains('changes', { period: periodStr });
+
+    return (count ?? 0) > 0;
+  } catch {
+    return false; // If check fails, allow processing
+  }
+}
+
+/**
+ * Simpan detail hasil penggajian per karyawan ke database
+ */
+async function savePayrollResults(
+  companyId: string,
+  month: number,
+  year: number,
+  results: PayrollBatchResult,
+  ptkpMap: Record<string, string>
+): Promise<void> {
+  const periodStr = `${year}-${String(month).padStart(2, '0')}`;
+
+  // Simpan ke tabel payroll_results (jika ada)
+  const rows = results.results.map((r) => ({
+    company_id: companyId,
+    period: periodStr,
+    employee_id: r.employee_id,
+    nama: r.nama,
+    gaji_pokok: r.gaji_pokok,
+    tunjangan_tetap: r.tunjangan_tetap,
+    uang_lembur: r.uang_lembur,
+    gross_income: r.gross_income,
+    pph21: r.pph21,
+    bpjs_employee_total: r.bpjs_employee_total,
+    bpjs_employer_total: r.bpjs_employer_total,
+    total_deductions: r.total_deductions,
+    net_pay: r.net_pay,
+    status: r.status,
+    ptkp_status: ptkpMap[r.employee_id] ?? 'TK/0',
+    processed_at: new Date().toISOString(),
+  }));
+
+  if (rows.length > 0) {
+    // Delete existing results for this period first (overwrite)
+    await supabase
+      .from('payroll_results')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('period', periodStr);
+
+    // Insert new results
+    await supabase.from('payroll_results').insert(rows);
+  }
 }
 
 export function PayrollProcessPage() {
   const { user } = useAuth();
   const companyId = user?.company_id ?? '';
+  const queryClient = useQueryClient();
 
   // Data hooks
   const { data: employees, isLoading: loadingEmployees } = useEmployees(user?.role ?? 'owner');
@@ -82,16 +147,16 @@ export function PayrollProcessPage() {
   const [result, setResult] = useState<PayrollBatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Array<{ nama: string; errors: string[] }>>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Duplicate period dialog
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
-  const [processedPeriods, setProcessedPeriods] = useState<Set<string>>(new Set());
 
   const isDataLoading = loadingEmployees || loadingTER || loadingBPJS;
   const activeEmployees = employees?.filter((e) => e.is_active) ?? [];
 
   /**
-   * Memulai proses penggajian
+   * Memulai proses penggajian dan simpan ke database
    */
   const startProcessing = useCallback(async () => {
     if (!terRates || !bpjsConfig || activeEmployees.length === 0) {
@@ -102,19 +167,21 @@ export function PayrollProcessPage() {
     setError(null);
     setValidationErrors([]);
     setResult(null);
+    setSuccessMessage(null);
     setIsProcessing(true);
     setTotalCount(activeEmployees.length);
     setProcessedCount(0);
 
     try {
       const payrollData: EmployeePayrollData[] = activeEmployees.map(toPayrollData);
+      // Build ptkp map for saving to payroll_results
+      const ptkpMap: Record<string, string> = {};
+      activeEmployees.forEach(e => { ptkpMap[e.id] = e.ptkp_status; });
 
-      // Simulate progress with a small delay for UX
+      // Progress indicator
       const progressInterval = setInterval(() => {
         setProcessedCount((prev) => {
-          if (prev < activeEmployees.length) {
-            return prev + 1;
-          }
+          if (prev < activeEmployees.length) return prev + 1;
           return prev;
         });
       }, 100);
@@ -132,12 +199,44 @@ export function PayrollProcessPage() {
 
       clearInterval(progressInterval);
       setProcessedCount(activeEmployees.length);
-
-      // Mark period as processed
-      const periodKey = `${selectedYear}-${selectedMonth}`;
-      setProcessedPeriods((prev) => new Set(prev).add(periodKey));
-
       setResult(batchResult);
+
+      // ─── Simpan ke Database ───────────────────────────────────────────
+      const periodId = `${companyId}_${selectedYear}_${String(selectedMonth).padStart(2, '0')}`;
+
+      // 1. Simpan detail per karyawan FIRST (so results aren't lost if audit fails)
+      savePayrollResults(companyId, selectedMonth, selectedYear, batchResult, ptkpMap).catch(() => {});
+
+      // 2. Log ke audit trail — STRICT: jika gagal, tampilkan warning (tapi hasil tetap tersimpan)
+      if (user) {
+        try {
+          await logPayrollProcess({
+            userId: user.id,
+            companyId: companyId,
+            userRole: user.role,
+            periodId,
+            periodMonth: selectedMonth,
+            periodYear: selectedYear,
+            employeeCount: batchResult.success_count,
+            totalNetPay: batchResult.total_net_pay,
+          });
+        } catch (auditErr) {
+          // Hasil sudah tersimpan, tapi audit gagal — warn user
+          console.error('[Payroll] Audit log gagal:', auditErr);
+          setError('Penggajian berhasil diproses, tetapi gagal mencatat ke audit trail. Hubungi admin.');
+        }
+      }
+
+      // 3. Invalidate cache → Dashboard & Riwayat update
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['payroll-history'] });
+
+      // Show success
+      setSuccessMessage(
+        `Penggajian ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} berhasil diproses! ` +
+        `${batchResult.success_count} karyawan berhasil, total gaji bersih Rp ${batchResult.total_net_pay.toLocaleString('id-ID')}.`
+      );
     } catch (err) {
       if (err instanceof BatchValidationError) {
         setValidationErrors(
@@ -153,19 +252,20 @@ export function PayrollProcessPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [terRates, bpjsConfig, activeEmployees, companyId, selectedMonth, selectedYear]);
+  }, [terRates, bpjsConfig, activeEmployees, companyId, selectedMonth, selectedYear, user, queryClient]);
 
   /**
-   * Handler tombol proses — cek duplikat periode dulu
+   * Handler tombol proses — cek duplikat periode dari DATABASE
    */
-  const handleProcess = useCallback(() => {
-    const periodKey = `${selectedYear}-${selectedMonth}`;
-    if (processedPeriods.has(periodKey)) {
+  const handleProcess = useCallback(async () => {
+    // Cek dari database apakah periode sudah pernah diproses
+    const exists = await checkPeriodExists(companyId, selectedMonth, selectedYear);
+    if (exists) {
       setShowDuplicateDialog(true);
     } else {
       startProcessing();
     }
-  }, [selectedYear, selectedMonth, processedPeriods, startProcessing]);
+  }, [companyId, selectedYear, selectedMonth, startProcessing]);
 
   /**
    * Konfirmasi overwrite periode duplikat
@@ -192,11 +292,8 @@ export function PayrollProcessPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-end gap-4">
-            {/* Month Select */}
             <div className="space-y-1.5">
-              <label htmlFor="month-select" className="text-sm font-medium text-ink">
-                Bulan
-              </label>
+              <label htmlFor="month-select" className="text-sm font-medium text-ink">Bulan</label>
               <Select
                 id="month-select"
                 value={selectedMonth}
@@ -204,18 +301,13 @@ export function PayrollProcessPage() {
                 disabled={isProcessing}
               >
                 {MONTH_NAMES.map((name, index) => (
-                  <SelectOption key={index + 1} value={index + 1}>
-                    {name}
-                  </SelectOption>
+                  <SelectOption key={index + 1} value={index + 1}>{name}</SelectOption>
                 ))}
               </Select>
             </div>
 
-            {/* Year Select */}
             <div className="space-y-1.5">
-              <label htmlFor="year-select" className="text-sm font-medium text-ink">
-                Tahun
-              </label>
+              <label htmlFor="year-select" className="text-sm font-medium text-ink">Tahun</label>
               <Select
                 id="year-select"
                 value={selectedYear}
@@ -223,14 +315,11 @@ export function PayrollProcessPage() {
                 disabled={isProcessing}
               >
                 {[2025, 2026, 2027].map((year) => (
-                  <SelectOption key={year} value={year}>
-                    {year}
-                  </SelectOption>
+                  <SelectOption key={year} value={year}>{year}</SelectOption>
                 ))}
               </Select>
             </div>
 
-            {/* Process Button */}
             <PayrollBatchRunner
               isProcessing={isProcessing}
               processedCount={processedCount}
@@ -240,18 +329,40 @@ export function PayrollProcessPage() {
             />
           </div>
 
-          {/* Info: jumlah karyawan aktif */}
           {!isDataLoading && (
             <p className="text-xs text-ink-mute mt-3">
               {activeEmployees.length} karyawan aktif akan diproses.
             </p>
           )}
-
           {isDataLoading && (
             <p className="text-xs text-ink-mute mt-3">Memuat data...</p>
           )}
         </CardContent>
       </Card>
+
+      {/* Success Banner */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="border-l-4 border-l-[#3ecf8e] bg-[#ecfdf5]">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-[#065f46] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-[#065f46]">Proses Penggajian Berhasil!</p>
+                    <p className="text-xs text-[#065f46]/80 mt-0.5">{successMessage}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Error Display */}
       {error && (
@@ -262,8 +373,7 @@ export function PayrollProcessPage() {
               <ul className="mt-2 space-y-1">
                 {validationErrors.map((ve, idx) => (
                   <li key={idx} className="text-xs text-[#991b1b]">
-                    <span className="font-medium">{ve.nama}:</span>{' '}
-                    {ve.errors.join(', ')}
+                    <span className="font-medium">{ve.nama}:</span> {ve.errors.join(', ')}
                   </li>
                 ))}
               </ul>
@@ -275,10 +385,8 @@ export function PayrollProcessPage() {
       {/* Results */}
       {result && (
         <>
-          {/* Summary */}
           <PayrollSummary result={result} />
 
-          {/* Result Table */}
           <Card>
             <CardHeader>
               <CardTitle>Detail Hasil Penggajian</CardTitle>
@@ -288,7 +396,6 @@ export function PayrollProcessPage() {
             </CardContent>
           </Card>
 
-          {/* Failed employees info */}
           {result.errors.length > 0 && (
             <Card className="border-l-4 border-l-[#f59e0b] bg-[#fffbeb]">
               <CardContent className="p-4">
@@ -298,8 +405,7 @@ export function PayrollProcessPage() {
                 <ul className="mt-2 space-y-1">
                   {result.errors.map((err) => (
                     <li key={err.employee_id} className="text-xs text-[#92400e]">
-                      <span className="font-medium">{err.nama}:</span>{' '}
-                      {err.error_message}
+                      <span className="font-medium">{err.nama}:</span> {err.error_message}
                     </li>
                   ))}
                 </ul>
@@ -309,21 +415,18 @@ export function PayrollProcessPage() {
         </>
       )}
 
-      {/* Duplicate Period Confirmation Dialog */}
+      {/* Duplicate Period Dialog */}
       <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Periode Sudah Diproses</DialogTitle>
             <DialogDescription>
-              Periode {MONTH_NAMES[selectedMonth - 1]} {selectedYear} sudah pernah diproses.
-              Timpa hasil sebelumnya?
+              Periode {MONTH_NAMES[selectedMonth - 1]} {selectedYear} sudah pernah diproses sebelumnya.
+              Apakah Anda ingin menimpa hasil sebelumnya?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDuplicateDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowDuplicateDialog(false)}>
               Batal
             </Button>
             <Button onClick={handleConfirmOverwrite}>

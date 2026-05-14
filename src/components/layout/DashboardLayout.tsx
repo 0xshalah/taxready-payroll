@@ -12,6 +12,7 @@ import { useState, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Footer } from './Footer';
 import { cn } from '@/lib/utils';
 
 export interface DashboardLayoutProps {
@@ -49,6 +50,9 @@ export function DashboardLayout({ companyName }: DashboardLayoutProps) {
         <main className="flex-1 p-4 md:p-6">
           <Outlet />
         </main>
+
+        {/* Legal Disclaimer Footer */}
+        <Footer />
       </div>
     </div>
   );

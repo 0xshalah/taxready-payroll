@@ -161,14 +161,18 @@ describe('generateCoretaxCSV', () => {
   it('should have correct CSV header with exactly 4 columns', () => {
     const result = generateCoretaxCSV('PT Test', validPeriod, validRecords);
     const lines = result.content.split('\n');
-    expect(lines[0]).toBe('NIK,Nama Lengkap,Penghasilan Bruto,Potongan PPh 21');
+    // Skip metadata comment lines (starting with #)
+    const dataLines = lines.filter(l => !l.startsWith('#'));
+    expect(dataLines[0]).toBe('NIK,Nama Lengkap,Penghasilan Bruto,Potongan PPh 21');
   });
 
   it('should have correct number of data rows', () => {
     const result = generateCoretaxCSV('PT Test', validPeriod, validRecords);
     const lines = result.content.split('\n');
+    // Skip metadata comment lines (starting with #)
+    const dataLines = lines.filter(l => !l.startsWith('#'));
     // 1 header + 2 data rows
-    expect(lines).toHaveLength(3);
+    expect(dataLines).toHaveLength(3);
   });
 
   it('should output correct data values', () => {
@@ -177,7 +181,8 @@ describe('generateCoretaxCSV', () => {
     ];
     const result = generateCoretaxCSV('PT Test', validPeriod, records);
     const lines = result.content.split('\n');
-    expect(lines[1]).toBe('3201234567890001,Budi,10000000,250000');
+    const dataLines = lines.filter(l => !l.startsWith('#'));
+    expect(dataLines[1]).toBe('3201234567890001,Budi,10000000,250000');
   });
 
   it('should round gross_income and pph21 to integers', () => {
@@ -186,7 +191,8 @@ describe('generateCoretaxCSV', () => {
     ];
     const result = generateCoretaxCSV('PT Test', validPeriod, records);
     const lines = result.content.split('\n');
-    expect(lines[1]).toBe('3201234567890001,Budi,10000001,250000');
+    const dataLines = lines.filter(l => !l.startsWith('#'));
+    expect(dataLines[1]).toBe('3201234567890001,Budi,10000001,250000');
   });
 
   it('should escape CSV fields containing commas', () => {
@@ -195,7 +201,8 @@ describe('generateCoretaxCSV', () => {
     ];
     const result = generateCoretaxCSV('PT Test', validPeriod, records);
     const lines = result.content.split('\n');
-    expect(lines[1]).toBe('3201234567890001,"Budi, S.Kom",10000000,250000');
+    const dataLines = lines.filter(l => !l.startsWith('#'));
+    expect(dataLines[1]).toBe('3201234567890001,"Budi, S.Kom",10000000,250000');
   });
 
   it('should throw ExportValidationError for invalid records', () => {
@@ -212,7 +219,9 @@ describe('generateCoretaxCSV', () => {
   it('should only contain 4 fields per row (no extra fields)', () => {
     const result = generateCoretaxCSV('PT Test', validPeriod, validRecords);
     const lines = result.content.split('\n');
-    for (const line of lines) {
+    // Skip metadata comment lines (starting with #)
+    const dataLines = lines.filter(l => !l.startsWith('#'));
+    for (const line of dataLines) {
       // Each line should have exactly 3 commas (4 fields)
       // Unless a field is quoted and contains a comma
       const fields = parseCSVLine(line);

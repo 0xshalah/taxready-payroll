@@ -15,7 +15,8 @@ export type Resource =
   | 'audit'
   | 'user_management'
   | 'profile'
-  | 'my_payslips';
+  | 'my_payslips'
+  | 'tarif_changelog';
 
 /** Aksi yang dapat dilakukan pada resource */
 export type Action = 'read' | 'write' | 'delete';

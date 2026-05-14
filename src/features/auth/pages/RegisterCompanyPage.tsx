@@ -18,7 +18,7 @@ import { Label } from '@/components/ui'
  */
 export function RegisterCompanyPage() {
   const navigate = useNavigate()
-  const { register, loading, error, clearError } = useAuth()
+  const { register, error, clearError } = useAuth()
 
   const [namaPerusahaan, setNamaPerusahaan] = useState('')
   const [npwpBadan, setNpwpBadan] = useState('')
@@ -27,6 +27,7 @@ export function RegisterCompanyPage() {
   const [password, setPassword] = useState('')
   const [konfirmasiPassword, setKonfirmasiPassword] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function validateForm(): string | null {
     if (!namaPerusahaan.trim()) {
@@ -47,8 +48,8 @@ export function RegisterCompanyPage() {
     if (!password) {
       return 'Password wajib diisi'
     }
-    if (password.length < 6) {
-      return 'Password minimal 6 karakter'
+    if (password.length < 8) {
+      return 'Password minimal 8 karakter'
     }
     if (password !== konfirmasiPassword) {
       return 'Konfirmasi password tidak cocok'
@@ -68,6 +69,7 @@ export function RegisterCompanyPage() {
     }
 
     try {
+      setIsSubmitting(true)
       await register({
         nama_perusahaan: namaPerusahaan.trim(),
         npwp_badan: npwpBadan.trim(),
@@ -79,6 +81,8 @@ export function RegisterCompanyPage() {
       navigate('/dashboard', { replace: true })
     } catch {
       // Error sudah di-handle oleh useAuth hook (state.error)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -86,6 +90,14 @@ export function RegisterCompanyPage() {
 
   return (
     <div className="min-h-screen bg-canvas flex items-center justify-center px-4 py-8">
+      <div className="fixed top-4 left-4">
+        <Link to="/" className="flex items-center gap-1.5 text-sm text-ink-mute hover:text-ink transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Kembali
+        </Link>
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Daftar Perusahaan</CardTitle>
@@ -103,7 +115,7 @@ export function RegisterCompanyPage() {
                 placeholder="PT Contoh Indonesia"
                 value={namaPerusahaan}
                 onChange={(e) => setNamaPerusahaan(e.target.value)}
-                disabled={loading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -116,7 +128,7 @@ export function RegisterCompanyPage() {
                 value={npwpBadan}
                 onChange={(e) => setNpwpBadan(e.target.value)}
                 maxLength={16}
-                disabled={loading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -128,7 +140,7 @@ export function RegisterCompanyPage() {
                 placeholder="Nama lengkap Anda"
                 value={nama}
                 onChange={(e) => setNama(e.target.value)}
-                disabled={loading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -141,7 +153,7 @@ export function RegisterCompanyPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
-                disabled={loading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -150,11 +162,11 @@ export function RegisterCompanyPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Minimal 6 karakter"
+                placeholder="Minimal 8 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
-                disabled={loading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -167,7 +179,7 @@ export function RegisterCompanyPage() {
                 value={konfirmasiPassword}
                 onChange={(e) => setKonfirmasiPassword(e.target.value)}
                 autoComplete="new-password"
-                disabled={loading}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -181,9 +193,9 @@ export function RegisterCompanyPage() {
               type="submit"
               variant="primary-green"
               className="w-full"
-              disabled={loading}
+              disabled={isSubmitting}
             >
-              {loading ? 'Memproses...' : 'Daftar Perusahaan'}
+              {isSubmitting ? 'Memproses...' : 'Daftar Perusahaan'}
             </Button>
           </form>
 

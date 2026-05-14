@@ -3,19 +3,20 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { LoginPage } from './LoginPage'
 
-// Mock useAuth hook
-const mockLogin = vi.fn()
-const mockClearError = vi.fn()
-const mockNavigate = vi.fn()
+// Mock supabase client (LoginPage calls supabase directly)
+const mockSignInWithPassword = vi.fn()
+const mockResetPasswordForEmail = vi.fn()
 
-vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({
-    login: mockLogin,
-    loading: false,
-    error: null,
-    clearError: mockClearError,
-  }),
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
+      resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
+    },
+  },
 }))
+
+const mockNavigate = vi.fn()
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -60,7 +61,7 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
 
     expect(await screen.findByText('Email wajib diisi')).toBeInTheDocument()
-    expect(mockLogin).not.toHaveBeenCalled()
+    expect(mockSignInWithPassword).not.toHaveBeenCalled()
   })
 
   it('shows error when password is empty', async () => {
@@ -72,11 +73,11 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
 
     expect(await screen.findByText('Password wajib diisi')).toBeInTheDocument()
-    expect(mockLogin).not.toHaveBeenCalled()
+    expect(mockSignInWithPassword).not.toHaveBeenCalled()
   })
 
-  it('calls login with credentials and redirects Owner to /dashboard', async () => {
-    mockLogin.mockResolvedValue({ role: 'owner', id: '1', company_id: 'c1', email: 'test@example.com', nama: 'Test', created_at: '' })
+  it('calls signInWithPassword and redirects to /dashboard on success', async () => {
+    mockSignInWithPassword.mockResolvedValue({ data: { user: { id: '1' } }, error: null })
 
     renderLoginPage()
 
@@ -89,7 +90,7 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith({
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'password123',
       })
@@ -100,44 +101,11 @@ describe('LoginPage', () => {
     })
   })
 
-  it('redirects HR Staff to /dashboard', async () => {
-    mockLogin.mockResolvedValue({ role: 'hr_staff', id: '2', company_id: 'c1', email: 'hr@example.com', nama: 'HR', created_at: '' })
-
-    renderLoginPage()
-
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'hr@example.com' },
+  it('shows error message on invalid credentials', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'Invalid login credentials' },
     })
-    fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'password123' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
-    })
-  })
-
-  it('redirects Regular Staff to /profile', async () => {
-    mockLogin.mockResolvedValue({ role: 'regular_staff', id: '3', company_id: 'c1', email: 'staff@example.com', nama: 'Staff', created_at: '' })
-
-    renderLoginPage()
-
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'staff@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'password123' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/profile', { replace: true })
-    })
-  })
-
-  it('does not navigate when login throws an error', async () => {
-    mockLogin.mockRejectedValue(new Error('Email atau password salah'))
 
     renderLoginPage()
 
@@ -149,8 +117,57 @@ describe('LoginPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
 
+    expect(await screen.findByText('Email atau password salah')).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('shows error for unconfirmed email', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'Email not confirmed' },
+    })
+
+    renderLoginPage()
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'test@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
+
+    expect(await screen.findByText(/email belum dikonfirmasi/i)).toBeInTheDocument()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('shows forgot password form when link clicked', async () => {
+    renderLoginPage()
+
+    fireEvent.click(screen.getByText(/lupa password/i))
+
+    expect(screen.getByText(/lupa password/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /kirim link reset/i })).toBeInTheDocument()
+  })
+
+  it('does not navigate when login fails', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'Some error' },
+    })
+
+    renderLoginPage()
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'test@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /masuk/i }))
+
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalled()
+      expect(mockSignInWithPassword).toHaveBeenCalled()
     })
 
     expect(mockNavigate).not.toHaveBeenCalled()

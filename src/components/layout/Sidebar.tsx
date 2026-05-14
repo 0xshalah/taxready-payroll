@@ -18,6 +18,7 @@ import {
   Shield,
   User,
   FileText,
+  History,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -40,7 +41,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, resource: 'employees' },
   { label: 'Karyawan', to: '/employees', icon: Users, resource: 'employees' },
   { label: 'Penggajian', to: '/payroll/process', icon: Calculator, resource: 'payroll' },
+  { label: 'Riwayat Gaji', to: '/payroll/history', icon: FileText, resource: 'payroll' },
   { label: 'Ekspor', to: '/export', icon: FileDown, resource: 'export' },
+  { label: 'Changelog Tarif', to: '/tarif-changelog', icon: History, resource: 'tarif_changelog' },
   { label: 'Pengaturan', to: '/settings', icon: Settings, resource: 'settings' },
   { label: 'Audit Trail', to: '/audit', icon: Shield, resource: 'audit' },
   { label: 'Profil Saya', to: '/profile', icon: User, resource: 'profile' },

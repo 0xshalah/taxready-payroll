@@ -5,7 +5,7 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuth } from './useAuth';
+import React from 'react';
 
 // Mock Supabase client
 const mockSignInWithPassword = vi.fn();
@@ -15,6 +15,7 @@ const mockGetSession = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 const mockFrom = vi.fn();
 const mockAdminDeleteUser = vi.fn();
+const mockUpdateUser = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -24,6 +25,7 @@ vi.mock('@/lib/supabase', () => ({
       signOut: (...args: unknown[]) => mockSignOut(...args),
       getSession: (...args: unknown[]) => mockGetSession(...args),
       onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
+      updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       admin: {
         deleteUser: (...args: unknown[]) => mockAdminDeleteUser(...args),
       },
@@ -31,6 +33,10 @@ vi.mock('@/lib/supabase', () => ({
     from: (...args: unknown[]) => mockFrom(...args),
   },
 }));
+
+// Import after mocks are set up
+import { useAuth } from './useAuth';
+import { AuthProvider } from '@/features/auth/context/AuthContext';
 
 // Helper to create a chainable mock for supabase.from()
 function createQueryMock(resolvedData: unknown, resolvedError: unknown = null) {
@@ -43,6 +49,13 @@ function createQueryMock(resolvedData: unknown, resolvedError: unknown = null) {
   return chain;
 }
 
+/** Wrapper that provides AuthProvider for hook tests */
+function createWrapper() {
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(AuthProvider, null, children);
+  };
+}
+
 describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,11 +65,12 @@ describe('useAuth', () => {
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
+    mockUpdateUser.mockResolvedValue({ data: { user: {} }, error: null });
   });
 
   describe('initialization', () => {
     it('should start with loading=true and then resolve to no user when no session', async () => {
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       // Initially loading
       expect(result.current.loading).toBe(true);
@@ -86,7 +100,7 @@ describe('useAuth', () => {
       const queryMock = createQueryMock(mockUser);
       mockFrom.mockReturnValue(queryMock);
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -116,7 +130,7 @@ describe('useAuth', () => {
       const queryMock = createQueryMock(mockUser);
       mockFrom.mockReturnValue(queryMock);
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -145,7 +159,7 @@ describe('useAuth', () => {
         error: { message: 'Invalid login credentials' },
       });
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -160,29 +174,29 @@ describe('useAuth', () => {
       expect(result.current.error).toBe('Email atau password salah');
     });
 
-    it('should sign out if user exists in auth but not in users table', async () => {
+    it('should use fallback user if profile not found in users table', async () => {
       mockSignInWithPassword.mockResolvedValue({
-        data: { user: { id: 'orphan-user' } },
+        data: { user: { id: 'orphan-user', email: 'orphan@example.com', user_metadata: {}, created_at: '2026-01-01' } },
         error: null,
       });
 
       const queryMock = createQueryMock(null, { message: 'not found' });
       mockFrom.mockReturnValue(queryMock);
-      mockSignOut.mockResolvedValue({ error: null });
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
+      let loginResult: unknown;
       await act(async () => {
-        await expect(
-          result.current.login({ email: 'orphan@example.com', password: 'pass' })
-        ).rejects.toThrow('Akun belum terdaftar dalam sistem');
+        loginResult = await result.current.login({ email: 'orphan@example.com', password: 'pass' });
       });
 
-      expect(mockSignOut).toHaveBeenCalled();
+      // Should NOT sign out — uses fallback user from auth data
+      expect(mockSignOut).not.toHaveBeenCalled();
+      expect(loginResult).toMatchObject({ id: 'orphan-user', email: 'orphan@example.com' });
     });
   });
 
@@ -246,7 +260,7 @@ describe('useAuth', () => {
         return createQueryMock(null);
       });
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -277,7 +291,7 @@ describe('useAuth', () => {
         error: { message: 'User already registered' },
       });
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -318,7 +332,7 @@ describe('useAuth', () => {
       mockFrom.mockReturnValue(queryMock);
       mockSignOut.mockResolvedValue({ error: null });
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.user).toEqual(mockUser);
@@ -341,7 +355,7 @@ describe('useAuth', () => {
         error: { message: 'Invalid login credentials' },
       });
 
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);

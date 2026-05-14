@@ -16,6 +16,7 @@ import { PayrollProcessPage } from '@/features/payroll/pages/PayrollProcessPage'
 import { PayrollHistoryPage } from '@/features/payroll/pages/PayrollHistoryPage';
 import { ExportPage } from '@/features/export/pages/ExportPage';
 import { SettingsPage } from '@/features/settings/pages/SettingsPage';
+import { TarifChangelogPage } from '@/features/settings/pages/TarifChangelogPage';
 import { AuditTrailPage } from '@/features/audit/pages/AuditTrailPage';
 import { ProfilePage } from '@/features/auth/pages/ProfilePage';
 import { MyPayslipsPage } from '@/features/payroll/pages/MyPayslipsPage';
@@ -91,6 +92,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute resource="settings" action="read">
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tarif-changelog"
+          element={
+            <ProtectedRoute resource="tarif_changelog" action="read">
+              <TarifChangelogPage />
             </ProtectedRoute>
           }
         />
