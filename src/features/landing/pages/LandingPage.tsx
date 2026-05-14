@@ -15,7 +15,7 @@ function HeroSection() {
     <section className="px-6 py-24">
       <div className="mx-auto max-w-5xl text-center">
         <FloatingBadge className="mb-8">
-          ✨ Gratis untuk 3 Beta Tester Pertama
+          🚧 Sedang dalam masa Beta — Gratis & Terbuka
         </FloatingBadge>
 
         <h1 className="max-w-3xl mx-auto text-5xl font-medium leading-[1.1] tracking-[-1.44px] text-ink md:text-6xl md:tracking-[-1.92px]">
@@ -73,7 +73,7 @@ function HeroSection() {
                 </div>
                 <div className="flex-1 mx-8">
                   <div className="mx-auto max-w-sm rounded-sm bg-canvas border border-hairline px-3 py-1 text-xs text-ink-mute text-center">
-                    app.taxreadypayroll.id/payroll/process
+                    localhost:5173/payroll/process
                   </div>
                 </div>
               </div>
@@ -411,7 +411,7 @@ const faqItems = [
   },
   {
     question: "Apakah kompatibel dengan Coretax DJP?",
-    answer: "100% kompatibel. Sistem menghasilkan file CSV/XML dengan format yang diterima portal Coretax DJP. Anda tinggal download dan upload langsung tanpa perlu edit manual. Validasi NIK 16 digit juga memastikan data tidak ditolak saat pelaporan.",
+    answer: "Dibangun mengikuti spesifikasi Coretax DJP yang berlaku saat ini. Sistem menghasilkan file CSV/XML dengan format yang sesuai portal Coretax DJP. Validasi NIK 16 digit juga memastikan data tidak ditolak saat pelaporan. Catatan: format Coretax dapat berubah sewaktu-waktu oleh DJP — kami akan memperbarui aplikasi mengikuti perubahan tersebut.",
   },
   {
     question: "Berapa lama setup awal?",
@@ -496,28 +496,21 @@ function FAQSection() {
 function Footer() {
   return (
     <footer className="border-t border-hairline px-6 py-10">
-      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 sm:flex-row">
-        <p className="text-sm text-ink-mute">Tax-Ready Payroll © 2026</p>
-        <nav className="flex gap-6">
-          <Link
-            to="/login"
-            className="text-sm text-ink-mute hover:text-ink"
-          >
-            Masuk
-          </Link>
-          <Link
-            to="/register"
-            className="text-sm text-ink-mute hover:text-ink"
-          >
-            Daftar
-          </Link>
-          <a
-            href="mailto:kontak@taxreadypayroll.id"
-            className="text-sm text-ink-mute hover:text-ink"
-          >
-            Kontak
-          </a>
-        </nav>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+          <p className="text-sm text-ink-mute">Tax-Ready Payroll © 2026 — Proyek Open Source</p>
+          <nav className="flex gap-6">
+            <Link to="/login" className="text-sm text-ink-mute hover:text-ink">Masuk</Link>
+            <Link to="/register" className="text-sm text-ink-mute hover:text-ink">Daftar</Link>
+            <a href="https://github.com/0xshalah/taxready-payroll/issues" target="_blank" rel="noopener noreferrer" className="text-sm text-ink-mute hover:text-ink">Laporkan Bug</a>
+          </nav>
+        </div>
+        <p className="text-[11px] text-ink-faint text-center leading-relaxed">
+          ⚠️ <strong>Disclaimer:</strong> Hasil perhitungan bersifat estimasi berdasarkan data yang diinput pengguna. 
+          Bukan nasihat pajak profesional. Pengguna bertanggung jawab atas kepatuhan pelaporan pajak. 
+          Format Coretax DJP dapat berubah sewaktu-waktu — selalu verifikasi dengan portal resmi DJP.
+          Konsultasikan dengan konsultan pajak berlisensi untuk kepastian hukum.
+        </p>
       </div>
     </footer>
   );
