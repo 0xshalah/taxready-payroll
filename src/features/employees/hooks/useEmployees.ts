@@ -41,7 +41,7 @@ interface EmployeeRawRow {
 /**
  * Enkripsi sebuah nilai menggunakan Supabase RPC encrypt_value(text).
  * SECURITY: Key diambil dari Supabase Vault di server — TIDAK dikirim dari client.
- * Migrasi 007_security_fixes.sql harus sudah dijalankan.
+ * Migrasi 009_fix_functions.sql harus sudah dijalankan.
  */
 async function encryptValue(plainText: string): Promise<string> {
   const { data, error } = await supabase.rpc('encrypt_value', {
