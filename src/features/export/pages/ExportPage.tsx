@@ -26,6 +26,7 @@ import {
 import { generateCoretaxXML } from '@/features/export/generators/xmlGenerator';
 import { downloadBPA1 } from '@/features/export/generators/pdfBPA1Generator';
 import { supabase } from '@/lib/supabase';
+import { logExportDocument } from '@/lib/auditLogger';
 import type { ExportRecord, ValidationError } from '@/features/export/generators/csvGenerator';
 
 type ExportFormat = 'csv' | 'xml' | 'pdf_bpa1';
@@ -181,11 +182,15 @@ export function ExportPage() {
         const blob = new Blob([result.content], { type: 'text/csv;charset=utf-8' });
         triggerDownload(blob, result.filename);
         setExportSuccess(`File ${result.filename} berhasil diunduh.`);
+        // Audit log export (HIGH-NEW-04)
+        if (user) logExportDocument({ userId: user.id, companyId, userRole: user.role, exportType: 'csv', periodMonth: selectedMonth, periodYear: selectedYear, fileName: result.filename }).catch(() => {});
       } else if (format === 'xml') {
         const result = generateCoretaxXML(companyName, period, records);
         const blob = new Blob([result.content], { type: 'application/xml;charset=utf-8' });
         triggerDownload(blob, result.filename);
         setExportSuccess(`File ${result.filename} berhasil diunduh.`);
+        // Audit log export (HIGH-NEW-04)
+        if (user) logExportDocument({ userId: user.id, companyId, userRole: user.role, exportType: 'xml', periodMonth: selectedMonth, periodYear: selectedYear, fileName: result.filename }).catch(() => {});
       }
     } catch (err) {
       if (err instanceof ExportValidationError) {

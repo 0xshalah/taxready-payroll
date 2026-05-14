@@ -34,6 +34,19 @@ async function sendEmail(params: SendEmailParams): Promise<void> {
 
 // ─── Email Templates ──────────────────────────────────────────────────────────
 
+/**
+ * Escape HTML special characters to prevent HTML injection in email templates.
+ * CWE-79: Improper Neutralization of Input During Web Page Generation
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 const baseStyle = `
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   max-width: 600px;
@@ -107,11 +120,15 @@ export async function sendPayrollCompletedEmail(params: {
   failedCount: number;
 }): Promise<void> {
   const formatRp = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
+  // CWE-79: Escape all user-controlled values before HTML interpolation
+  const ownerNama = escapeHtml(params.ownerNama);
+  const period = escapeHtml(params.period);
+  const companyName = escapeHtml(params.companyName);
 
   const html = baseTemplate(`
     <h2 style="margin: 0 0 8px; font-size: 20px; font-weight: 600;">Penggajian Berhasil Diproses</h2>
-    <p style="color: #707070; margin: 0 0 24px;">Halo ${params.ownerNama},</p>
-    <p>Proses penggajian untuk periode <strong>${params.period}</strong> di <strong>${params.companyName}</strong> telah selesai.</p>
+    <p style="color: #707070; margin: 0 0 24px;">Halo ${ownerNama},</p>
+    <p>Proses penggajian untuk periode <strong>${period}</strong> di <strong>${companyName}</strong> telah selesai.</p>
 
     <div style="background: #fafafa; border: 1px solid #dfdfdf; border-radius: 8px; padding: 20px; margin: 20px 0;">
       <table style="width: 100%; border-collapse: collapse;">
@@ -141,7 +158,7 @@ export async function sendPayrollCompletedEmail(params: {
 
   await sendEmail({
     to: params.ownerEmail,
-    subject: `✅ Penggajian ${params.period} Selesai — ${params.companyName}`,
+    subject: `✅ Penggajian ${period} Selesai — ${companyName}`,
     html,
   });
 }
@@ -157,11 +174,14 @@ export async function sendPayslipReadyEmail(params: {
   netPay: number;
 }): Promise<void> {
   const formatRp = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
+  const employeeNama = escapeHtml(params.employeeNama);
+  const period = escapeHtml(params.period);
+  const companyName = escapeHtml(params.companyName);
 
   const html = baseTemplate(`
     <h2 style="margin: 0 0 8px; font-size: 20px; font-weight: 600;">Slip Gaji Tersedia</h2>
-    <p style="color: #707070; margin: 0 0 24px;">Halo ${params.employeeNama},</p>
-    <p>Slip gaji Anda untuk periode <strong>${params.period}</strong> dari <strong>${params.companyName}</strong> sudah tersedia.</p>
+    <p style="color: #707070; margin: 0 0 24px;">Halo ${employeeNama},</p>
+    <p>Slip gaji Anda untuk periode <strong>${period}</strong> dari <strong>${companyName}</strong> sudah tersedia.</p>
 
     <div style="background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
       <p style="margin: 0; color: #065f46; font-size: 14px;">Gaji Bersih (Take-Home Pay)</p>
@@ -174,7 +194,7 @@ export async function sendPayslipReadyEmail(params: {
 
   await sendEmail({
     to: params.employeeEmail,
-    subject: `💰 Slip Gaji ${params.period} — ${params.companyName}`,
+    subject: `💰 Slip Gaji ${period} — ${companyName}`,
     html,
   });
 }
@@ -191,20 +211,24 @@ export async function sendWelcomeEmail(params: {
   appUrl: string;
 }): Promise<void> {
   const roleLabel = params.role === 'owner' ? 'Owner' : params.role === 'hr_staff' ? 'HR Staff' : 'Regular Staff';
+  const userNama = escapeHtml(params.userNama);
+  const companyName = escapeHtml(params.companyName);
+  const userEmail = escapeHtml(params.userEmail);
+  const appUrl = escapeHtml(params.appUrl);
 
   const html = baseTemplate(`
     <h2 style="margin: 0 0 8px; font-size: 20px; font-weight: 600;">Selamat Datang di Tax-Ready Payroll</h2>
-    <p style="color: #707070; margin: 0 0 24px;">Halo ${params.userNama},</p>
-    <p>Anda telah ditambahkan ke <strong>${params.companyName}</strong> sebagai <strong>${roleLabel}</strong>.</p>
+    <p style="color: #707070; margin: 0 0 24px;">Halo ${userNama},</p>
+    <p>Anda telah ditambahkan ke <strong>${companyName}</strong> sebagai <strong>${roleLabel}</strong>.</p>
 
     <div style="background: #fafafa; border: 1px solid #dfdfdf; border-radius: 8px; padding: 20px; margin: 20px 0;">
       <p style="margin: 0 0 8px; font-size: 14px; color: #707070;">Informasi akun Anda:</p>
-      <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${params.userEmail}</p>
+      <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${userEmail}</p>
       <p style="margin: 4px 0; font-size: 14px; color: #707070;">Gunakan password yang Anda buat saat registrasi untuk login.</p>
     </div>
 
     <p style="font-size: 14px; color: #707070;">Klik tombol di bawah untuk mulai menggunakan aplikasi.</p>
-    <a href="${params.appUrl}/login" style="${primaryBtn}">Login Sekarang</a>
+    <a href="${appUrl}/login" style="${primaryBtn}">Login Sekarang</a>
   `);
 
   await sendEmail({
