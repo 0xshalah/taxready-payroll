@@ -413,7 +413,7 @@ export function SettingsPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="inv-password">Password Sementara</Label>
-              <Input id="inv-password" type="password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} placeholder="Minimal 8 karakter" />
+              <Input id="inv-password" type="password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} placeholder="Minimal 8 karakter" autoComplete="new-password" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="inv-role">Role</Label>

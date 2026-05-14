@@ -34,14 +34,16 @@ interface RecentActivity {
 // ─── Data Fetching ────────────────────────────────────────────────────────────
 
 async function fetchDashboardStats(companyId: string): Promise<DashboardStats> {
-  // Fetch active employee count
+  // Fetch active employee count — filter by company_id (defense in depth, RLS handles isolation)
   const { count, error: countError } = await supabase
     .from('employees')
     .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId)
     .eq('is_active', true);
 
   if (countError) {
-    console.error('Gagal mengambil jumlah karyawan:', countError.message);
+    // Don't expose internal error details
+    console.error('[Dashboard] Employee count error');
   }
 
   // Fetch last payroll process from audit_logs
@@ -55,7 +57,7 @@ async function fetchDashboardStats(companyId: string): Promise<DashboardStats> {
     .maybeSingle();
 
   if (payrollError) {
-    console.error('Gagal mengambil data penggajian terakhir:', payrollError.message);
+    console.error('[Dashboard] Payroll fetch error');
   }
 
   let lastPayrollPeriod: string | null = null;
@@ -87,7 +89,7 @@ async function fetchRecentActivity(companyId: string): Promise<RecentActivity[]>
     .limit(5);
 
   if (error) {
-    console.error('Gagal mengambil aktivitas terakhir:', error.message);
+    console.error('[Dashboard] Activity fetch error');
     return [];
   }
 

@@ -70,15 +70,17 @@ export function LoginPage() {
         redirectTo: `${window.location.origin}/login`,
       })
       if (error) { setResetError(error.message) }
-      else { setResetSent(true) }
+      else {
+        setResetSent(true)
+        // HIGH-NEW-03: Invalidate all other sessions when password reset is requested
+        await supabase.auth.signOut({ scope: 'others' }).catch(() => {})
+      }
     } catch {
       setResetError('Gagal mengirim email reset password')
     } finally {
       setIsSendingReset(false)
     }
   }
-
-  // ─── Forgot Password View ────────────────────────────────────────
   if (showForgotPassword) {
     return (
       <div className="min-h-screen bg-canvas dark:bg-mesh flex items-center justify-center px-4">
