@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useTERRates, useBPJSConfig, useUpdateBPJSConfig } from '@/features/settings/hooks/useSettings';
 import { supabase } from '@/lib/supabase';
+import { sendWelcomeEmail } from '@/lib/emailService';
 import type { BPJSConfig } from '@/types/payroll';
 import type { User, UserRole } from '@/types/auth';
 
@@ -75,6 +76,16 @@ function useInviteUser(companyId: string) {
         role,
       });
       if (userError) throw new Error(userError.message);
+
+      // Send welcome email (fire-and-forget)
+      sendWelcomeEmail({
+        userEmail: email,
+        userNama: nama,
+        companyName: companyId, // ideally fetch company name
+        role,
+        temporaryPassword: password,
+        appUrl: window.location.origin,
+      }).catch(() => {});
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users', companyId] }),
   });

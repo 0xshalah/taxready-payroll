@@ -35,6 +35,7 @@ import { PayrollResultTable } from '@/features/payroll/components/PayrollResultT
 import { PayrollSummary } from '@/features/payroll/components/PayrollSummary';
 import { supabase } from '@/lib/supabase';
 import { logPayrollProcess } from '@/lib/auditLogger';
+import { sendPayrollCompletedEmail, sendPayslipReadyEmail } from '@/lib/emailService';
 import type { PayrollBatchResult, EmployeePayrollData } from '@/types/payroll';
 import type { Employee } from '@/types/employee';
 
@@ -239,6 +240,46 @@ export function PayrollProcessPage() {
         `Penggajian ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} berhasil diproses! ` +
         `${batchResult.success_count} karyawan berhasil, total gaji bersih Rp ${batchResult.total_net_pay.toLocaleString('id-ID')}.`
       );
+
+      // 4. Kirim notifikasi email (fire-and-forget)
+      if (user?.email) {
+        const periodLabel = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+
+        // Email ke Owner
+        sendPayrollCompletedEmail({
+          ownerEmail: user.email,
+          ownerNama: user.nama,
+          companyName: user.company_id, // Will show company_id, ideally fetch company name
+          period: periodLabel,
+          employeeCount: activeEmployees.length,
+          totalNetPay: batchResult.total_net_pay,
+          successCount: batchResult.success_count,
+          failedCount: batchResult.failed_count,
+        }).catch(() => {});
+
+        // Email ke setiap karyawan yang berhasil (jika ada email di payroll_results)
+        // Fetch employee emails from users table
+        void supabase
+          .from('users')
+          .select('id, email, nama')
+          .eq('company_id', companyId)
+          .eq('role', 'regular_staff')
+          .then(({ data: staffUsers }) => {
+            if (!staffUsers) return;
+            for (const result of batchResult.results) {
+              const staffUser = staffUsers.find(u => u.id === result.employee_id);
+              if (staffUser?.email) {
+                sendPayslipReadyEmail({
+                  employeeEmail: staffUser.email,
+                  employeeNama: result.nama,
+                  companyName: user.company_id,
+                  period: periodLabel,
+                  netPay: result.net_pay,
+                }).catch(() => {});
+              }
+            }
+          });
+      }
     } catch (err) {
       if (err instanceof BatchValidationError) {
         setValidationErrors(
