@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const manualAuthInProgress = useRef(false);
+  const logoutIntended = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -119,7 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else if (event === 'SIGNED_OUT') {
-          setState({ user: null, loading: false, error: null });
+          // Hanya clear user jika logout memang disengaja
+          // (SIGNED_OUT bisa fire spuriously saat token refresh / page load)
+          if (logoutIntended.current && mounted) {
+            setState({ user: null, loading: false, error: null });
+            logoutIntended.current = false;
+          }
         }
       }
     );
@@ -298,8 +304,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async (): Promise<void> => {
+    logoutIntended.current = true;
     const { error } = await supabase.auth.signOut();
     if (error) {
+      logoutIntended.current = false;
       setState(prev => ({ ...prev, error: error.message }));
       throw new Error(error.message);
     }
