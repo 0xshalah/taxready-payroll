@@ -121,17 +121,24 @@
 }
 
 @layer components {
-  /* ─── View Transitions: Circular Reveal ─── */
+  /* ─── View Transitions: Circular Reveal — GPU Compositor Thread ───
+   *
+   * Pipeline: Snapshot DOM lama → Apply state baru → Snapshot DOM baru
+   *           → GPU animasi clip-path pada tekstur VRAM (0% CPU selama animasi)
+   *
+   * DILARANG: CSS transition pada color/background saat View Transition aktif
+   * DILARANG: Manipulasi DOM di dalam transition.ready.then()
+   * AMAN: Hanya clip-path/opacity pada ::view-transition-* pseudo-elements
+   */
 
-  /* Nonaktifkan cross-fade default browser */
+  /* Nonaktifkan cross-fade default browser — kita kontrol sendiri via WAAPI */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  /* ─── SUNRISE (Dark → Light) ───
-     New (terang) di atas, melebar menutupi old (gelap) di bawah */
+  /* ─── SUNRISE (Dark → Light): new (terang) di atas, melebar ─── */
   ::view-transition-old(root) {
     z-index: 1;
   }
@@ -139,9 +146,8 @@
     z-index: 9999;
   }
 
-  /* ─── ECLIPSE (Light → Dark) ───
-     Old (terang) harus di atas new (gelap) agar efek menyusut terlihat.
-     Kita override z-index saat class 'eclipse-transition' aktif di html. */
+  /* ─── ECLIPSE (Light → Dark): old (terang) di atas, menyusut ───
+   * Class ditambahkan JS sebelum animasi, dihapus setelah selesai */
   html.eclipse-transition::view-transition-old(root) {
     z-index: 9999;
   }
@@ -149,12 +155,22 @@
     z-index: 1;
   }
 
-  /* Pastikan tidak ada CSS transition yang mengganggu snapshot View Transitions */
-  html {
+  /* KRITIS: Nonaktifkan semua CSS transition pada elemen root HANYA saat
+   * View Transition aktif. Ini mencegah browser melakukan Paint DOM
+   * bersamaan dengan animasi GPU (penyebab utama jank).
+   * Menggunakan :has() pseudo-class yang hanya aktif saat ::view-transition ada */
+  html:has(::view-transition) * {
     transition: none !important;
+    animation: none !important;
   }
 
-  /* Aksesibilitas */
+  /* Kecualikan pseudo-elements View Transition itu sendiri */
+  html:has(::view-transition) ::view-transition-old(root),
+  html:has(::view-transition) ::view-transition-new(root) {
+    animation: revert !important;
+  }
+
+  /* Aksesibilitas: skip animasi jika user prefer reduced motion */
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*),
     ::view-transition-old(*),

@@ -59,21 +59,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const y = event?.clientY ?? window.innerHeight / 2;
 
     // Radius maksimal: dari titik klik ke sudut terjauh viewport
+    // Kalkulasi dilakukan SEKALI di sini (CPU), sebelum GPU mengambil alih
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
     );
 
+    // Untuk Eclipse: tambahkan class SEBELUM startViewTransition
+    // agar z-index CSS sudah siap saat snapshot diambil
+    if (isEclipse) {
+      document.documentElement.classList.add('eclipse-transition');
+    }
+
     const transition = document.startViewTransition(() => {
+      // HANYA perubahan state DOM di sini — tidak ada manipulasi lain
       setThemeState(newTheme);
     });
 
     transition.ready.then(() => {
+      // Di sini HANYA WAAPI animate — tidak ada DOM manipulation
       if (isEclipse) {
-        // ─── ECLIPSE: Light → Dark ───────────────────────────────────
-        // Tambahkan class untuk override z-index (old di atas new)
-        document.documentElement.classList.add('eclipse-transition');
-
         const anim = document.documentElement.animate(
           {
             clipPath: [
@@ -88,14 +93,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           }
         );
 
-        // Hapus class setelah animasi selesai
+        // Cleanup class setelah animasi GPU selesai
         anim.finished.then(() => {
           document.documentElement.classList.remove('eclipse-transition');
         }).catch(() => {
           document.documentElement.classList.remove('eclipse-transition');
         });
       } else {
-        // ─── SUNRISE: Dark → Light ───────────────────────────────────
+        // SUNRISE: new (terang) melebar dari titik klik
         document.documentElement.animate(
           {
             clipPath: [
@@ -110,7 +115,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           }
         );
       }
-    }).catch(() => {});
+    }).catch(() => {
+      // Cleanup jika transition di-skip
+      document.documentElement.classList.remove('eclipse-transition');
+    });
   }, []);
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
