@@ -1,5 +1,6 @@
 /**
- * ThemeToggle — Animated dark/light mode switch
+ * ThemeToggle — Animated dark/light mode switch with circular reveal transition
+ * Passes click event coordinates for View Transitions API circular clip-path animation.
  */
 
 import { Moon, Sun } from 'lucide-react';
@@ -10,7 +11,7 @@ export function ThemeToggle() {
 
   return (
     <button
-      onClick={toggleTheme}
+      onClick={(e) => toggleTheme(e)}
       className="relative h-8 w-8 rounded-lg border border-hairline bg-canvas-card flex items-center justify-center text-ink-mute hover:text-ink hover:border-primary/30 transition-all duration-200"
       aria-label={theme === 'dark' ? 'Beralih ke mode terang' : 'Beralih ke mode gelap'}
       title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}

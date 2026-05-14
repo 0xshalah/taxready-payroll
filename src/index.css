@@ -121,6 +121,30 @@
 }
 
 @layer components {
+  /* ─── View Transitions: Circular Reveal ─── */
+  /* Disable default crossfade, we use custom clip-path animation */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  /* Eclipse (Light→Dark): new view expands as dark circle */
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+  ::view-transition-new(root) {
+    z-index: 9999;
+  }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none !important;
+    }
+  }
+
   /* Glass card (dark mode only) */
   .dark .glass-card {
     backdrop-filter: blur(20px);
