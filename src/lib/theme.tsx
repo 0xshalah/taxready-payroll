@@ -1,12 +1,13 @@
 /**
- * Theme Provider — Circular Reveal with View Transitions API
- * 
- * Eclipse (Light → Dark): Lingkaran GELAP melebar dari titik klik menutupi layar terang
- * Sunrise (Dark → Light): Lingkaran TERANG melebar dari titik klik menutupi layar gelap
- * 
- * Kedua arah menggunakan ::view-transition-new(root) yang MELEBAR (expand).
- * Perbedaannya hanya state DOM yang diterapkan di dalam callback.
- * Ini memastikan animasi selalu smooth karena hanya satu arah (expand).
+ * Theme Provider — Circular Reveal dengan View Transitions API
+ *
+ * SUNRISE (Dark → Light): Sentrifugal — new (terang) melebar dari kursor
+ *   → animate ::view-transition-new(root): circle(0) → circle(max)
+ *   → new layer di atas, old (gelap) diam di bawah
+ *
+ * ECLIPSE (Light → Dark): Sentripetal — old (terang) menyusut ke kursor
+ *   → animate ::view-transition-old(root): circle(max) → circle(0)
+ *   → old layer dinaikkan ke atas via z-index, new (gelap) terungkap di baliknya
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
@@ -45,44 +46,70 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = useCallback((event?: React.MouseEvent) => {
     const newTheme: Theme = themeRef.current === 'dark' ? 'light' : 'dark';
+    const isEclipse = newTheme === 'dark'; // Light → Dark = Eclipse
 
-    // Fallback
+    // Fallback: browser tidak support View Transitions
     if (!document.startViewTransition) {
       setThemeState(newTheme);
       return;
     }
 
-    // Koordinat klik
+    // Koordinat klik (origin animasi)
     const x = event?.clientX ?? window.innerWidth / 2;
     const y = event?.clientY ?? window.innerHeight / 2;
 
-    // Radius maksimal — dari titik klik ke sudut terjauh
+    // Radius maksimal: dari titik klik ke sudut terjauh viewport
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
     );
 
-    // Mulai View Transition
     const transition = document.startViewTransition(() => {
       setThemeState(newTheme);
     });
 
     transition.ready.then(() => {
-      // Selalu animate ::view-transition-new(root) MELEBAR dari titik klik
-      // Ini yang paling smooth karena GPU hanya perlu expand satu layer
-      document.documentElement.animate(
-        {
-          clipPath: [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`,
-          ],
-        },
-        {
-          duration: 450,
-          easing: 'cubic-bezier(0.25, 1, 0.5, 1)', // Smooth snap di akhir
-          pseudoElement: '::view-transition-new(root)',
-        }
-      );
+      if (isEclipse) {
+        // ─── ECLIPSE: Light → Dark ───────────────────────────────────
+        // Tambahkan class untuk override z-index (old di atas new)
+        document.documentElement.classList.add('eclipse-transition');
+
+        const anim = document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(${endRadius}px at ${x}px ${y}px)`,
+              `circle(0px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 500,
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            pseudoElement: '::view-transition-old(root)',
+          }
+        );
+
+        // Hapus class setelah animasi selesai
+        anim.finished.then(() => {
+          document.documentElement.classList.remove('eclipse-transition');
+        }).catch(() => {
+          document.documentElement.classList.remove('eclipse-transition');
+        });
+      } else {
+        // ─── SUNRISE: Dark → Light ───────────────────────────────────
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${endRadius}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 500,
+            easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+            pseudoElement: '::view-transition-new(root)',
+          }
+        );
+      }
     }).catch(() => {});
   }, []);
 

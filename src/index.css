@@ -122,14 +122,16 @@
 
 @layer components {
   /* ─── View Transitions: Circular Reveal ─── */
-  /* Nonaktifkan cross-fade default — kita pakai clip-path sendiri */
+
+  /* Nonaktifkan cross-fade default browser */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  /* New view selalu di atas — dia yang di-clip melebar */
+  /* ─── SUNRISE (Dark → Light) ───
+     New (terang) di atas, melebar menutupi old (gelap) di bawah */
   ::view-transition-old(root) {
     z-index: 1;
   }
@@ -137,12 +139,22 @@
     z-index: 9999;
   }
 
-  /* Pastikan tidak ada transition CSS yang mengganggu snapshot */
+  /* ─── ECLIPSE (Light → Dark) ───
+     Old (terang) harus di atas new (gelap) agar efek menyusut terlihat.
+     Kita override z-index saat class 'eclipse-transition' aktif di html. */
+  html.eclipse-transition::view-transition-old(root) {
+    z-index: 9999;
+  }
+  html.eclipse-transition::view-transition-new(root) {
+    z-index: 1;
+  }
+
+  /* Pastikan tidak ada CSS transition yang mengganggu snapshot View Transitions */
   html {
     transition: none !important;
   }
 
-  /* Aksesibilitas: skip animasi jika user prefer reduced motion */
+  /* Aksesibilitas */
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*),
     ::view-transition-old(*),
