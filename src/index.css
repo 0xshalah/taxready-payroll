@@ -1,9 +1,10 @@
+/* Google Fonts — loaded via CSS for better CSP control */
+/* @import must be first before any other statements */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Google Fonts — loaded via CSS for better CSP control */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   /* ─── Light Theme (Default) ─── */
