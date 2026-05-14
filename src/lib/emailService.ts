@@ -187,7 +187,7 @@ export async function sendWelcomeEmail(params: {
   userNama: string;
   companyName: string;
   role: string;
-  temporaryPassword: string;
+  temporaryPassword: string; // kept for API compat but NOT used in email body
   appUrl: string;
 }): Promise<void> {
   const roleLabel = params.role === 'owner' ? 'Owner' : params.role === 'hr_staff' ? 'HR Staff' : 'Regular Staff';
@@ -198,12 +198,12 @@ export async function sendWelcomeEmail(params: {
     <p>Anda telah ditambahkan ke <strong>${params.companyName}</strong> sebagai <strong>${roleLabel}</strong>.</p>
 
     <div style="background: #fafafa; border: 1px solid #dfdfdf; border-radius: 8px; padding: 20px; margin: 20px 0;">
-      <p style="margin: 0 0 8px; font-size: 14px; color: #707070;">Kredensial login Anda:</p>
+      <p style="margin: 0 0 8px; font-size: 14px; color: #707070;">Informasi akun Anda:</p>
       <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${params.userEmail}</p>
-      <p style="margin: 4px 0; font-size: 14px;"><strong>Password Sementara:</strong> <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">${params.temporaryPassword}</code></p>
+      <p style="margin: 4px 0; font-size: 14px; color: #707070;">Gunakan password yang Anda buat saat registrasi untuk login.</p>
     </div>
 
-    <p style="font-size: 14px; color: #991b1b;">⚠️ Segera ubah password Anda setelah login pertama.</p>
+    <p style="font-size: 14px; color: #707070;">Klik tombol di bawah untuk mulai menggunakan aplikasi.</p>
     <a href="${params.appUrl}/login" style="${primaryBtn}">Login Sekarang</a>
   `);
 

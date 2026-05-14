@@ -39,17 +39,13 @@ interface EmployeeRawRow {
 }
 
 /**
- * Enkripsi sebuah nilai menggunakan Supabase RPC encrypt_value(text, text).
+ * Enkripsi sebuah nilai menggunakan Supabase RPC encrypt_value(text).
+ * SECURITY: Key diambil dari Supabase Vault di server — TIDAK dikirim dari client.
+ * Migrasi 007_security_fixes.sql harus sudah dijalankan.
  */
 async function encryptValue(plainText: string): Promise<string> {
-  const encryptionKey = import.meta.env.VITE_ENCRYPTION_KEY ?? '';
-  if (!encryptionKey) {
-    throw new Error('VITE_ENCRYPTION_KEY tidak dikonfigurasi');
-  }
-
   const { data, error } = await supabase.rpc('encrypt_value', {
     plain_text: plainText,
-    encryption_key: encryptionKey,
   });
 
   if (error) {
@@ -60,19 +56,12 @@ async function encryptValue(plainText: string): Promise<string> {
 }
 
 /**
- * Dekripsi sebuah nilai menggunakan Supabase RPC decrypt_value(bytea, text).
- * Data dari kolom bytea dikembalikan Supabase sebagai hex string (\x...) —
- * dan bisa langsung dikirim kembali ke RPC tanpa konversi.
+ * Dekripsi sebuah nilai menggunakan Supabase RPC decrypt_value(text).
+ * SECURITY: Key diambil dari Supabase Vault di server — TIDAK dikirim dari client.
  */
 async function decryptValue(encryptedData: string): Promise<string> {
-  const encryptionKey = import.meta.env.VITE_ENCRYPTION_KEY ?? '';
-  if (!encryptionKey) {
-    throw new Error('VITE_ENCRYPTION_KEY tidak dikonfigurasi');
-  }
-
   const { data, error } = await supabase.rpc('decrypt_value', {
     encrypted_data: encryptedData,
-    encryption_key: encryptionKey,
   });
 
   if (error) {
@@ -214,16 +203,20 @@ async function updateEmployee(
 }
 
 /**
- * Hapus karyawan (soft delete: set is_active = false)
+ * Hapus karyawan — SOFT DELETE: set is_active = false + deleted_at = now()
+ * Data tidak dihapus permanen untuk menjaga integritas audit trail.
  */
 async function deleteEmployee(id: string): Promise<void> {
   const { error } = await supabase
     .from('employees')
-    .delete()
+    .update({
+      is_active: false,
+      deleted_at: new Date().toISOString(),
+    })
     .eq('id', id);
 
   if (error) {
-    throw new Error(`Gagal menghapus data karyawan: ${error.message}`);
+    throw new Error(`Gagal menonaktifkan data karyawan: ${error.message}`);
   }
 }
 

@@ -15,6 +15,11 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+// Mock ThemeToggle to avoid ThemeProvider dependency in tests
+vi.mock('@/components/ThemeToggle', () => ({
+  ThemeToggle: () => null,
+}));
+
 function renderHeader(props = {}) {
   return render(
     <MemoryRouter>

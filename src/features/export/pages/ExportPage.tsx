@@ -77,15 +77,13 @@ async function fetchPayrollResults(companyId: string, period: string): Promise<E
     .select('id, nik_encrypted')
     .in('id', employeeIds);
 
-  // Decrypt NIKs
+  // Decrypt NIKs — key diambil dari Vault di server, tidak dari client
   const nikMap: Record<string, string> = {};
-  const encryptionKey = import.meta.env.VITE_ENCRYPTION_KEY ?? '';
   if (employees) {
     for (const emp of employees) {
       try {
         const { data: decrypted } = await supabase.rpc('decrypt_value', {
           encrypted_data: emp.nik_encrypted,
-          encryption_key: encryptionKey,
         });
         if (decrypted) {
           nikMap[emp.id] = decrypted;

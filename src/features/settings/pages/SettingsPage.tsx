@@ -17,6 +17,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useTERRates, useBPJSConfig, useUpdateBPJSConfig } from '@/features/settings/hooks/useSettings';
 import { supabase } from '@/lib/supabase';
 import { sendWelcomeEmail } from '@/lib/emailService';
+import { logRoleChange } from '@/lib/auditLogger';
 import type { BPJSConfig } from '@/types/payroll';
 import type { User, UserRole } from '@/types/auth';
 
@@ -46,13 +47,29 @@ function useCompanyUsers(companyId: string) {
 function useUpdateUserRole(companyId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: UserRole }) => {
+    mutationFn: async ({ userId, newRole, currentUser, targetUser }: {
+      userId: string;
+      newRole: UserRole;
+      currentUser: User;
+      targetUser: User;
+    }) => {
       const { error } = await supabase
         .from('users')
         .update({ role: newRole })
         .eq('id', userId)
         .eq('company_id', companyId);
       if (error) throw new Error(error.message);
+
+      // HIGH-02 FIX: Catat perubahan role ke audit log
+      await logRoleChange({
+        userId: currentUser.id,
+        companyId,
+        userRole: currentUser.role,
+        targetUserId: userId,
+        targetUserName: targetUser.nama,
+        oldRole: targetUser.role,
+        newRole,
+      }).catch(() => {}); // non-blocking
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users', companyId] }),
   });
@@ -77,13 +94,14 @@ function useInviteUser(companyId: string) {
       });
       if (userError) throw new Error(userError.message);
 
-      // Send welcome email (fire-and-forget)
+      // SECURITY FIX: Kirim email welcome TANPA password plaintext
+      // User akan login dengan password yang mereka set sendiri
       sendWelcomeEmail({
         userEmail: email,
         userNama: nama,
-        companyName: companyId, // ideally fetch company name
+        companyName: companyId,
         role,
-        temporaryPassword: password,
+        temporaryPassword: '', // Tidak dikirim via email — security fix
         appUrl: window.location.origin,
       }).catch(() => {});
     },
@@ -350,7 +368,12 @@ export function SettingsPage() {
                             {u.id !== user?.id ? (
                               <Select
                                 value={u.role}
-                                onChange={(e) => updateRole.mutate({ userId: u.id, newRole: e.target.value as UserRole })}
+                                onChange={(e) => updateRole.mutate({
+                                  userId: u.id,
+                                  newRole: e.target.value as UserRole,
+                                  currentUser: user!,
+                                  targetUser: u,
+                                })}
                                 className="h-7 text-xs w-32"
                               >
                                 <SelectOption value="owner">Owner</SelectOption>
