@@ -10,58 +10,55 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // ─── Luxury Dark Theme ─────────────────────────────────────────
-        // Brand & Accent (Emerald → Emerald-Cyan gradient system)
+        // Brand (same in both themes)
         primary: {
           DEFAULT: "#3ecf8e",
           deep: "#24b47e",
           soft: "#4ade80",
           cyan: "#06b6d4",
-          foreground: "#0a0a0f",
+          foreground: "#171717",
         },
-        // Surface (Deep dark with glass layers)
+        // Surface — light default, dark override via dark: prefix
         canvas: {
-          DEFAULT: "#0a0a0f",       // Deep navy-black base
-          soft: "#12121a",          // Slightly lifted surface
-          card: "#14141f",          // Card background
-          elevated: "#1a1a2e",      // Elevated panels
-          night: "#1c1c1c",         // Legacy compat
-          "night-soft": "#202020",  // Legacy compat
+          DEFAULT: "var(--color-canvas)",
+          soft: "var(--color-canvas-soft)",
+          card: "var(--color-canvas-card)",
+          elevated: "var(--color-canvas-elevated)",
         },
-        // Glass borders (subtle white opacity)
+        // Borders
         hairline: {
-          DEFAULT: "rgba(255,255,255,0.08)",
-          strong: "rgba(255,255,255,0.15)",
-          cool: "rgba(255,255,255,0.05)",
+          DEFAULT: "var(--color-hairline)",
+          strong: "var(--color-hairline-strong)",
+          cool: "var(--color-hairline-cool)",
         },
-        // Text (Light on dark)
+        // Text
         ink: {
-          DEFAULT: "#f0f0f5",       // Primary text (off-white)
-          secondary: "#e0e0ea",     // Slightly dimmer
-          mute: "#8b8b9e",          // Muted (lavender-gray)
-          "mute-2": "#6b6b80",     // More muted
-          faint: "#4a4a5e",         // Very faint (disabled)
+          DEFAULT: "var(--color-ink)",
+          secondary: "var(--color-ink-secondary)",
+          mute: "var(--color-ink-mute)",
+          "mute-2": "var(--color-ink-mute-2)",
+          faint: "var(--color-ink-faint)",
         },
-        // Semantic (with glow-friendly colors)
+        // Semantic
         warning: {
           DEFAULT: "#f59e0b",
-          foreground: "#fbbf24",
-          bg: "rgba(245,158,11,0.1)",
+          foreground: "var(--color-warning-fg)",
+          bg: "var(--color-warning-bg)",
         },
         error: {
           DEFAULT: "#ef4444",
-          foreground: "#fca5a5",
-          bg: "rgba(239,68,68,0.1)",
+          foreground: "var(--color-error-fg)",
+          bg: "var(--color-error-bg)",
         },
         info: {
           DEFAULT: "#3b82f6",
-          foreground: "#93c5fd",
-          bg: "rgba(59,130,246,0.1)",
+          foreground: "var(--color-info-fg)",
+          bg: "var(--color-info-bg)",
         },
         success: {
           DEFAULT: "#3ecf8e",
-          foreground: "#6ee7b7",
-          bg: "rgba(62,207,142,0.1)",
+          foreground: "var(--color-success-fg)",
+          bg: "var(--color-success-bg)",
         },
         // shadcn/ui CSS variable mappings
         border: "hsl(var(--border))",
@@ -109,15 +106,8 @@ const config: Config = {
       boxShadow: {
         glow: "0 0 20px rgba(62,207,142,0.15)",
         "glow-lg": "0 0 40px rgba(62,207,142,0.2)",
-        "glow-cyan": "0 0 20px rgba(6,182,212,0.15)",
         glass: "0 8px 32px rgba(0,0,0,0.4)",
         "glass-lg": "0 16px 48px rgba(0,0,0,0.5)",
-      },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-primary": "linear-gradient(135deg, #3ecf8e 0%, #06b6d4 100%)",
-        "gradient-dark": "linear-gradient(180deg, #0a0a0f 0%, #12121a 100%)",
-        "mesh-gradient": "radial-gradient(at 20% 20%, rgba(62,207,142,0.06) 0%, transparent 50%), radial-gradient(at 80% 80%, rgba(6,182,212,0.04) 0%, transparent 50%)",
       },
       keyframes: {
         "accordion-down": {
@@ -128,20 +118,10 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "glow-pulse": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.7" },
-        },
-        shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
-        shimmer: "shimmer 2s linear infinite",
       },
     },
   },

@@ -66,7 +66,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         {/* Overlay */}
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/30 dark:bg-black/70 dark:backdrop-blur-sm"
           onClick={() => onOpenChange(false)}
           aria-hidden="true"
         />
@@ -76,7 +76,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           role="dialog"
           aria-modal="true"
           className={cn(
-            "relative z-50 w-full max-w-lg rounded-xl border border-hairline bg-canvas-card p-6 shadow-glass-lg backdrop-blur-xl",
+            "relative z-50 w-full max-w-lg rounded-xl border border-hairline bg-canvas-card p-6 shadow-lg dark:shadow-glass-lg dark:backdrop-blur-xl",
             className
           )}
           {...props}

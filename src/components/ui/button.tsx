@@ -8,19 +8,19 @@ const buttonVariants = cva(
     variants: {
       variant: {
         "primary-green":
-          "bg-gradient-primary text-primary-foreground rounded-lg hover:shadow-glow btn-glow font-semibold",
+          "bg-primary text-primary-foreground rounded-lg hover:bg-primary-deep dark:bg-gradient-to-r dark:from-primary dark:to-primary-cyan dark:hover:shadow-glow font-semibold",
         "secondary-outline":
-          "border border-hairline-strong bg-canvas-card text-ink rounded-lg hover:bg-canvas-elevated hover:border-primary/30",
+          "border border-hairline-strong bg-canvas-card text-ink rounded-lg hover:bg-canvas-elevated dark:hover:border-primary/30",
         danger:
-          "bg-error/90 text-white rounded-lg hover:bg-error hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]",
+          "bg-error text-white rounded-lg hover:bg-error/90 dark:hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]",
         link:
           "text-primary underline-offset-4 hover:underline bg-transparent",
         default:
-          "bg-gradient-primary text-primary-foreground rounded-lg hover:shadow-glow btn-glow font-semibold",
+          "bg-primary text-primary-foreground rounded-lg hover:bg-primary-deep dark:bg-gradient-to-r dark:from-primary dark:to-primary-cyan dark:hover:shadow-glow font-semibold",
         outline:
-          "border border-hairline-strong bg-canvas-card text-ink rounded-lg hover:bg-canvas-elevated hover:border-primary/30",
+          "border border-hairline-strong bg-canvas-card text-ink rounded-lg hover:bg-canvas-elevated dark:hover:border-primary/30",
         secondary:
-          "bg-canvas-elevated text-ink rounded-lg hover:bg-canvas-soft/80",
+          "bg-canvas-elevated text-ink rounded-lg hover:bg-canvas-soft",
         ghost:
           "hover:bg-canvas-elevated hover:text-ink rounded-lg",
       },

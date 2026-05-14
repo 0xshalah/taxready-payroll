@@ -10,6 +10,7 @@
 import { Menu, LogOut } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/types/auth';
 
@@ -45,7 +46,7 @@ export function Header({ onMenuClick, companyName, className }: HeaderProps) {
   return (
     <header
       className={cn(
-        'flex items-center justify-between bg-canvas-card/50 border-b border-hairline px-4 py-3 md:px-6 backdrop-blur-sm',
+        'flex items-center justify-between bg-canvas border-b border-hairline px-4 py-3 md:px-6 dark:bg-canvas-card/50 dark:backdrop-blur-sm',
         className
       )}
     >
@@ -83,6 +84,9 @@ export function Header({ onMenuClick, companyName, className }: HeaderProps) {
         <span className="hidden lg:inline text-sm text-ink truncate max-w-[150px]">
           {displayName}
         </span>
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* Logout button */}
         <button
